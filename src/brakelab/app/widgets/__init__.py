@@ -1,5 +1,5 @@
 """Reusable widgets."""
 
-from .info import InfoButton, show_info
+from .info import DetailsPanel, InfoButton, InfoSink
 
-__all__ = ["InfoButton", "show_info"]
+__all__ = ["InfoButton", "DetailsPanel", "InfoSink"]

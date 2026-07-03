@@ -1,9 +1,11 @@
-"""INPUTS panel — categorized inputs as plain text fields with click-to-open info.
+"""INPUTS panel — categorized inputs as plain text fields, each with a unit and click-to-open info.
 
-Values are edited in normal text fields (not spin boxes, so they can't be nudged by accident) and
-only committed when you press Enter or leave the field. Out-of-range or non-numeric entries are
-rejected and the field reverts. Each row has an "ⓘ" button that opens the input's note on click.
-Bare, consistent widgets — the theme is applied globally.
+- Values are edited in text fields (not spin boxes) and commit only on Enter / focus-out, so they
+  can't be nudged by accident. Bad or out-of-range entries revert.
+- Each number shows its unit; where the unit is convertible (length, mass, force, pressure, area,
+  volume) a small dropdown lets you view/enter that number in another unit (metric is the default).
+  Switching units never changes the stored value.
+- The ⓘ sends the input's original spreadsheet note to the in-window Details area.
 """
 
 from __future__ import annotations
@@ -11,6 +13,7 @@ from __future__ import annotations
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
     QCheckBox,
+    QComboBox,
     QGridLayout,
     QGroupBox,
     QLabel,
@@ -19,24 +22,29 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from ...core.unit_convert import compatible_units, convert
 from ..controller import ProjectController
 from ..field_spec import GROUPS, Field
-from ..widgets import InfoButton
+from ..widgets import InfoButton, InfoSink
+
+
+def _fmt(value: float) -> str:
+    return f"{value:.6g}"
 
 
 class InputPanel(QWidget):
-    """A vertical stack of grouped input rows bound to the controller."""
-
-    def __init__(self, controller: ProjectController, parent: QWidget | None = None) -> None:
+    def __init__(self, controller: ProjectController, sink: InfoSink, parent: QWidget | None = None) -> None:
         super().__init__(parent)
         self._controller = controller
+        self._sink = sink
         self._editors: dict[str, QWidget] = {}
+        self._display_unit: dict[str, str] = {}
 
         layout = QVBoxLayout(self)
         title = QLabel("INPUTS")
-        f = title.font()
-        f.setBold(True)
-        title.setFont(f)
+        tf = title.font()
+        tf.setBold(True)
+        title.setFont(tf)
         layout.addWidget(title)
 
         for group in GROUPS:
@@ -44,61 +52,81 @@ class InputPanel(QWidget):
             grid = QGridLayout(box)
             grid.setColumnStretch(1, 1)
             for row, field in enumerate(group.fields):
-                label = QLabel(field.label)
-                editor = self._make_editor(field)
-                self._editors[field.path] = editor
-                grid.addWidget(label, row, 0)
-                grid.addWidget(editor, row, 1)
+                grid.addWidget(QLabel(field.label), row, 0)
+                grid.addWidget(self._make_editor(field), row, 1)
+                grid.addWidget(self._make_unit_widget(field), row, 2)
                 if field.note:
-                    grid.addWidget(InfoButton(field.label, field.note), row, 2)
+                    grid.addWidget(InfoButton(field.label, field.note, sink), row, 3)
             layout.addWidget(box)
         layout.addStretch(1)
 
         controller.configReplaced.connect(self._reload_from_config)
 
+    # --- widgets -----------------------------------------------------------------------------
     def _make_editor(self, field: Field) -> QWidget:
         value = self._controller.value(field.path)
         if field.kind == "bool":
             w = QCheckBox()
             w.setChecked(bool(value))
             w.toggled.connect(lambda checked, p=field.path: self._controller.set_value(p, bool(checked)))
+            self._editors[field.path] = w
             return w
 
-        edit = QLineEdit(self._format(field, value))
+        self._display_unit[field.path] = field.unit
+        edit = QLineEdit(self._display_text(field, value))
         edit.setAlignment(Qt.AlignRight)
-        if field.unit and field.unit != "-":
-            edit.setPlaceholderText(field.unit)
         edit.editingFinished.connect(lambda e=edit, fld=field: self._commit(e, fld))
+        self._editors[field.path] = edit
         return edit
 
-    @staticmethod
-    def _format(field: Field, value) -> str:
+    def _make_unit_widget(self, field: Field) -> QWidget:
+        units = compatible_units(field.unit) if field.kind != "bool" else []
+        if len(units) <= 1:
+            text = "" if field.unit in ("", "-") else field.unit
+            return QLabel(text)
+        combo = QComboBox()
+        combo.addItems(units)
+        combo.setCurrentText(field.unit)
+        combo.currentTextChanged.connect(lambda u, fld=field: self._change_unit(fld, u))
+        return combo
+
+    # --- value <-> display -------------------------------------------------------------------
+    def _display_text(self, field: Field, canonical_value: float) -> str:
         if field.kind == "int":
-            return str(int(value))
-        return f"{float(value):.{field.decimals}f}"
+            return str(int(canonical_value))
+        shown = convert(float(canonical_value), field.unit, self._display_unit.get(field.path, field.unit))
+        return _fmt(shown)
 
     def _commit(self, edit: QLineEdit, field: Field) -> None:
-        text = edit.text().strip()
         try:
-            value = int(round(float(text))) if field.kind == "int" else float(text)
+            entered = float(edit.text().strip())
         except ValueError:
-            edit.setText(self._format(field, self._controller.value(field.path)))
+            edit.setText(self._display_text(field, self._controller.value(field.path)))
             return
-        value = max(field.minimum, min(field.maximum, value))  # clamp to the field's range
-        self._controller.set_value(field.path, value)
-        edit.setText(self._format(field, value))
+        # Convert what the user typed (in the display unit) back to the canonical unit.
+        canonical = convert(entered, self._display_unit.get(field.path, field.unit), field.unit)
+        if field.kind == "int":
+            canonical = round(canonical)
+        canonical = max(field.minimum, min(field.maximum, canonical))  # clamp in canonical units
+        self._controller.set_value(field.path, canonical)
+        edit.setText(self._display_text(field, canonical))
+
+    def _change_unit(self, field: Field, new_unit: str) -> None:
+        self._display_unit[field.path] = new_unit
+        editor = self._editors[field.path]
+        if isinstance(editor, QLineEdit):
+            editor.setText(self._display_text(field, self._controller.value(field.path)))
 
     def _reload_from_config(self, _config) -> None:
-        """Refresh every editor after a new config is loaded."""
         for path, editor in self._editors.items():
             value = self._controller.value(path)
             editor.blockSignals(True)
             if isinstance(editor, QCheckBox):
                 editor.setChecked(bool(value))
             elif isinstance(editor, QLineEdit):
-                # Recover the field to format correctly.
                 field = self._field_for(path)
-                editor.setText(self._format(field, value) if field else str(value))
+                if field:
+                    editor.setText(self._display_text(field, value))
             editor.blockSignals(False)
 
     @staticmethod

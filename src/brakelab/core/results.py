@@ -79,12 +79,16 @@ class ValidationMessage:
 
 @dataclass(frozen=True)
 class Requirement:
-    """A single engineering check with enough detail to see exactly why it passes or fails."""
+    """A single engineering check, framed as "what the inputs require" vs "what the setup produces".
 
-    name: str                       # short label, e.g. "Front braking authority"
-    description: str                # what it means / why it matters
-    condition: str                  # symbolic condition, e.g. "F_pedal ≥ F_bar,front"
-    detail: str                     # the condition with current numbers filled in
+    Both sides are pre-formatted strings (no inequality symbols) so the panel can show the
+    requirement and the current result plainly, side by side.
+    """
+
+    name: str                       # spreadsheet-style label, e.g. "Are front braking requirements met?"
+    description: str                # the spreadsheet's own comment for this check
+    requirement_text: str           # what the current inputs require, e.g. "at least 2,021 N of pedal force"
+    current_text: str               # what the current setup produces, e.g. "2,400 N delivered"
     passed: bool
     hard: bool = True               # True = must pass; False = a desirable target (soft)
 

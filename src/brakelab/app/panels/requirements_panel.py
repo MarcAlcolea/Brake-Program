@@ -1,8 +1,8 @@
-"""REQUIREMENTS panel — the checks that decide pass/fail, with the numbers shown.
+"""REQUIREMENTS panel — what the current inputs require vs what the setup produces.
 
-Each row is one engineering check: its name, the condition with current values filled in, and a
-plain ✓ PASS / ✗ FAIL (monochrome, no colour). Clicking the ⓘ cell explains why the check matters.
-Hard requirements must pass; soft ones are targets. A one-line overall verdict sits on top.
+Columns: Requirement · What the inputs require · What the setup produces · Status · ⓘ. No inequality
+symbols — each side is a plain phrase. Pass/fail is shown as ✓ / ✗ (monochrome). Clicking a row's ⓘ
+sends its spreadsheet comment to the in-window Details area.
 """
 
 from __future__ import annotations
@@ -20,14 +20,13 @@ from PySide6.QtWidgets import (
 
 from ...core.results import BrakeResults, Requirement
 from ..controller import ProjectController
-from ..widgets import show_info
+from ..widgets import InfoSink
 
 
 class RequirementsPanel(QWidget):
-    """Live table of engineering requirements plus an overall verdict."""
-
-    def __init__(self, controller: ProjectController, parent: QWidget | None = None) -> None:
+    def __init__(self, controller: ProjectController, sink: InfoSink, parent: QWidget | None = None) -> None:
         super().__init__(parent)
+        self._sink = sink
         self._row_req: dict[int, Requirement] = {}
 
         layout = QVBoxLayout(self)
@@ -44,23 +43,22 @@ class RequirementsPanel(QWidget):
         self._verdict.setFont(vf)
         layout.addWidget(self._verdict)
 
-        self._table = QTableWidget(0, 4)
-        self._table.setHorizontalHeaderLabels(["Check", "Condition (current values)", "Status", ""])
+        self._table = QTableWidget(0, 5)
+        self._table.setHorizontalHeaderLabels(
+            ["Requirement", "The inputs require", "The setup produces", "Status", ""]
+        )
         self._table.verticalHeader().setVisible(False)
         self._table.setEditTriggers(QAbstractItemView.NoEditTriggers)
         self._table.setSelectionMode(QAbstractItemView.NoSelection)
         self._table.setShowGrid(False)
         header = self._table.horizontalHeader()
-        header.setSectionResizeMode(0, QHeaderView.ResizeToContents)
-        header.setSectionResizeMode(1, QHeaderView.Stretch)
+        header.setSectionResizeMode(0, QHeaderView.Stretch)
+        header.setSectionResizeMode(1, QHeaderView.ResizeToContents)
         header.setSectionResizeMode(2, QHeaderView.ResizeToContents)
         header.setSectionResizeMode(3, QHeaderView.ResizeToContents)
+        header.setSectionResizeMode(4, QHeaderView.ResizeToContents)
         self._table.cellClicked.connect(self._on_cell_clicked)
         layout.addWidget(self._table)
-
-        self._notes = QLabel()
-        self._notes.setWordWrap(True)
-        layout.addWidget(self._notes)
 
         controller.resultsChanged.connect(self.refresh)
         self.refresh(controller.results)
@@ -68,7 +66,7 @@ class RequirementsPanel(QWidget):
     def _on_cell_clicked(self, row: int, _col: int) -> None:
         req = self._row_req.get(row)
         if req:
-            show_info(self, req.name, f"{req.description}\n\nRequirement: {req.condition}")
+            self._sink(req.name, req.description)
 
     def refresh(self, results: BrakeResults) -> None:
         reqs = results.requirements
@@ -76,22 +74,23 @@ class RequirementsPanel(QWidget):
         self._table.setRowCount(len(reqs))
         for row, req in enumerate(reqs):
             name = QTableWidgetItem(req.name + ("" if req.hard else "  (target)"))
-            cond = QTableWidgetItem(req.detail)
+            require = QTableWidgetItem(req.requirement_text)
+            produce = QTableWidgetItem(req.current_text)
             if req.passed:
                 status_text = "✓ PASS"
             elif req.hard:
                 status_text = "✗ FAIL"
             else:
-                status_text = "– off target"
+                status_text = "✗ off target"
             status = QTableWidgetItem(status_text)
             info = QTableWidgetItem("ⓘ")
             info.setTextAlignment(Qt.AlignCenter)
             self._table.setItem(row, 0, name)
-            self._table.setItem(row, 1, cond)
-            self._table.setItem(row, 2, status)
-            self._table.setItem(row, 3, info)
+            self._table.setItem(row, 1, require)
+            self._table.setItem(row, 2, produce)
+            self._table.setItem(row, 3, status)
+            self._table.setItem(row, 4, info)
 
-        self._verdict.setText("Status:  ALL REQUIREMENTS MET" if results.ok else "Status:  REQUIREMENTS NOT MET")
-
-        warnings = [m.message for m in results.messages if m.level in ("warning", "error")]
-        self._notes.setText(("Notes:  " + "   •  ".join(warnings)) if warnings else "")
+        self._verdict.setText(
+            "Status:  ALL REQUIREMENTS MET" if results.ok else "Status:  REQUIREMENTS NOT MET"
+        )

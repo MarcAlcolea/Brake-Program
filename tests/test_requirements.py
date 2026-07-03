@@ -23,17 +23,21 @@ def test_soft_target_does_not_fail_overall():
     assert r.ok is True  # soft miss must not fail the design
 
 
-def test_excess_deceleration_fails_front_authority():
+def test_excess_deceleration_fails_front_requirement():
     cfg = copy.deepcopy(rc.outboarded_x2())
     cfg.target_decel_g = 2.5
     r = BrakeEngine().solve(cfg)
-    front = next(req for req in r.requirements if req.name == "Front braking authority")
+    front = next(req for req in r.requirements if req.name == "Are front braking requirements met?")
     assert front.passed is False
     assert r.ok is False
 
 
-def test_every_requirement_has_filled_detail():
+def test_every_requirement_is_fully_described():
     r = BrakeEngine().solve(rc.inboarded_x1())
     assert r.requirements
     for req in r.requirements:
-        assert req.detail and req.condition and req.description
+        assert req.description and req.requirement_text and req.current_text
+        # No inequality symbols in the presented text.
+        for symbol in ("<", ">", "≥", "≤", "→"):
+            assert symbol not in req.requirement_text
+            assert symbol not in req.current_text

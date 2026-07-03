@@ -1,14 +1,14 @@
 """OUTPUTS panel — every computed quantity, grouped by phase, in a plain table.
 
-Columns: Quantity · Value · Unit · ⓘ. Units have their own column so they're always visible.
-Clicking the ⓘ cell on a row opens that quantity's formula and description. Refreshes on every
-recompute. Minimal, consistent styling from the global theme.
+Columns: Quantity · Value · Unit · ⓘ. After each input change, values that went up are tinted green
+and values that went down are tinted red (theme-aware), so it's easy to see what a change affected.
+Clicking a row's ⓘ sends its formula and note to the in-window Details area.
 """
 
 from __future__ import annotations
 
 from PySide6.QtCore import Qt
-from PySide6.QtGui import QFont
+from PySide6.QtGui import QColor, QFont
 from PySide6.QtWidgets import (
     QAbstractItemView,
     QHeaderView,
@@ -20,25 +20,28 @@ from PySide6.QtWidgets import (
 )
 
 from ...core.results import BrakeResults
+from .. import theme
 from ..controller import ProjectController
 from ..output_spec import GROUPS, Output
-from ..widgets import show_info
+from ..widgets import InfoSink
+
+_TRANSPARENT = QColor(0, 0, 0, 0)
 
 
 class OutputsPanel(QWidget):
-    """A grouped, read-only table of all outputs."""
-
-    def __init__(self, controller: ProjectController, parent: QWidget | None = None) -> None:
+    def __init__(self, controller: ProjectController, sink: InfoSink, parent: QWidget | None = None) -> None:
         super().__init__(parent)
         self._controller = controller
+        self._sink = sink
         self._value_items: list[tuple[Output, QTableWidgetItem]] = []
         self._row_output: dict[int, Output] = {}
+        self._previous: dict[str, float] = {}
 
         layout = QVBoxLayout(self)
         title = QLabel("OUTPUTS")
-        f = title.font()
-        f.setBold(True)
-        title.setFont(f)
+        tf = title.font()
+        tf.setBold(True)
+        title.setFont(tf)
         layout.addWidget(title)
 
         self._table = QTableWidget(0, 4)
@@ -46,7 +49,6 @@ class OutputsPanel(QWidget):
         self._table.verticalHeader().setVisible(False)
         self._table.setEditTriggers(QAbstractItemView.NoEditTriggers)
         self._table.setSelectionMode(QAbstractItemView.NoSelection)
-        self._table.setAlternatingRowColors(False)
         self._table.setShowGrid(False)
         header = self._table.horizontalHeader()
         header.setSectionResizeMode(0, QHeaderView.Stretch)
@@ -58,6 +60,7 @@ class OutputsPanel(QWidget):
 
         self._build_rows()
         controller.resultsChanged.connect(self.refresh)
+        controller.configReplaced.connect(lambda _c: self._previous.clear())
         self.refresh(controller.results)
 
     def _build_rows(self) -> None:
@@ -75,15 +78,13 @@ class OutputsPanel(QWidget):
             for output in group.outputs:
                 row = self._table.rowCount()
                 self._table.insertRow(row)
-                name = QTableWidgetItem(output.label)
                 value = QTableWidgetItem("")
                 value.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
-                unit = QTableWidgetItem(output.unit)
                 info = QTableWidgetItem("ⓘ")
                 info.setTextAlignment(Qt.AlignCenter)
-                self._table.setItem(row, 0, name)
+                self._table.setItem(row, 0, QTableWidgetItem(output.label))
                 self._table.setItem(row, 1, value)
-                self._table.setItem(row, 2, unit)
+                self._table.setItem(row, 2, QTableWidgetItem(output.unit))
                 self._table.setItem(row, 3, info)
                 self._value_items.append((output, value))
                 self._row_output[row] = output
@@ -91,7 +92,10 @@ class OutputsPanel(QWidget):
     def _on_cell_clicked(self, row: int, _col: int) -> None:
         output = self._row_output.get(row)
         if output:
-            show_info(self, output.label, f"{output.formula}\n\n{output.description}")
+            note = f"Formula:  {output.formula}"
+            if output.description:
+                note += f"\n\n{output.description}"
+            self._sink(output.label, note)
 
     def refresh(self, results: BrakeResults) -> None:
         config = self._controller.config
@@ -99,3 +103,17 @@ class OutputsPanel(QWidget):
             val = output.getter(results, config)
             decimals = 3 if abs(val) < 100 else 1
             item.setText(f"{val:,.{decimals}f}")
+
+            prev = self._previous.get(output.label)
+            if prev is None or abs(val - prev) < 1e-9:
+                item.setBackground(_TRANSPARENT)
+            elif val > prev:
+                item.setBackground(theme.increase_color())
+            else:
+                item.setBackground(theme.decrease_color())
+            self._previous[output.label] = val
+
+    def reset_highlights(self) -> None:
+        """Re-clear/re-evaluate highlight colours (e.g. after a theme change)."""
+        for _output, item in self._value_items:
+            item.setBackground(_TRANSPARENT)

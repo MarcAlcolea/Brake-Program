@@ -1,44 +1,49 @@
-"""Click-to-open information affordance.
+"""Click-to-open information affordance and the in-window details area.
 
-A small "ⓘ" button that shows its explanatory text in a popup when clicked (not on hover), used to
-explain inputs, outputs and requirements.
+Clicking an "ⓘ" does not open an external dialog; it routes the text to a :class:`DetailsPanel`
+docked inside the main window, so the explanation feels part of the program. Info text is passed
+around as ``(title, body)`` and displayed by an ``InfoSink`` callable.
 """
 
 from __future__ import annotations
 
-from PySide6.QtWidgets import QMessageBox, QToolButton, QWidget
+from typing import Callable
+
+from PySide6.QtWidgets import QGroupBox, QLabel, QTextEdit, QToolButton, QVBoxLayout, QWidget
+
+#: A callable that displays an information entry: ``sink(title, body)``.
+InfoSink = Callable[[str, str], None]
 
 
 class InfoButton(QToolButton):
-    """A compact "ⓘ" button that opens a message box with ``title`` and ``text`` on click."""
+    """A compact "ⓘ" button that sends its text to an :data:`InfoSink` on click."""
 
-    def __init__(self, title: str, text: str, parent: QWidget | None = None) -> None:
+    def __init__(self, title: str, text: str, sink: InfoSink, parent: QWidget | None = None) -> None:
         super().__init__(parent)
         self.setText("ⓘ")
         self.setAutoRaise(True)
-        self.setCursor(self.cursor())  # default arrow; makes clickability obvious enough
         self.setToolTip("Click for details")
-        self._title = title
-        self._text = text
-        self.clicked.connect(self._show)
-
-    def set_info(self, title: str, text: str) -> None:
-        self._title, self._text = title, text
-
-    def _show(self) -> None:
-        box = QMessageBox(self)
-        box.setWindowTitle(self._title)
-        box.setText(self._text)
-        box.setIcon(QMessageBox.NoIcon)
-        box.setStandardButtons(QMessageBox.Close)
-        box.exec()
+        self.clicked.connect(lambda: sink(title, text))
 
 
-def show_info(parent: QWidget, title: str, text: str) -> None:
-    """Show an information popup (used where a full button isn't convenient, e.g. table cells)."""
-    box = QMessageBox(parent)
-    box.setWindowTitle(title)
-    box.setText(text)
-    box.setIcon(QMessageBox.NoIcon)
-    box.setStandardButtons(QMessageBox.Close)
-    box.exec()
+class DetailsPanel(QGroupBox):
+    """An in-window panel that shows the explanation for the last-clicked item."""
+
+    def __init__(self, parent: QWidget | None = None) -> None:
+        super().__init__("Details", parent)
+        layout = QVBoxLayout(self)
+        self._title = QLabel("Click any ⓘ to see the note and formula here.")
+        f = self._title.font()
+        f.setBold(True)
+        self._title.setFont(f)
+        self._title.setWordWrap(True)
+        self._body = QTextEdit()
+        self._body.setReadOnly(True)
+        self._body.setFrameStyle(0)
+        layout.addWidget(self._title)
+        layout.addWidget(self._body)
+        self.setMaximumHeight(150)
+
+    def show_details(self, title: str, body: str) -> None:
+        self._title.setText(title)
+        self._body.setPlainText(body)
