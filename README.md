@@ -30,19 +30,35 @@ src/brakelab/
 tests/         golden-value + property + round-trip tests
 ```
 
-## Install
+## Run (the easy way)
+Double-click **`run.command`** in Finder, or from a terminal in this folder:
 ```
-python -m venv .venv && source .venv/bin/activate
-pip install -r requirements.txt
+./run.command
 ```
+That launches the GUI with the 2026 baseline loaded. No setup, no virtualenv to activate.
 
-## Run
+## Run (terminal)
 ```
-python -m brakelab                              # launch the GUI (loads the 2026 baseline)
-python -m brakelab.cli configs/2026_baseline.json          # headless: print results
-python -m brakelab.cli configs/2026_baseline.json --report out.pdf   # + PDF report
-pytest                                          # run the test suite
+python3 -m brakelab                                     # launch the GUI
+python3 -m brakelab.cli configs/2026_baseline.json      # headless: print results
+python3 -m brakelab.cli configs/2026_baseline.json --report out.pdf   # + PDF report
+python3 -m pytest                                       # run the test suite
 ```
+Use `python3` (this machine has no `python`/`pip` on the PATH — use `python3 -m pip`).
+
+## Setup on a new machine
+Dependencies (installed once, into the system Python's user site):
+```
+python3 -m pip install -r requirements.txt
+```
+The code under `src/` is put on the import path by a `brakelab.pth` file in the user site-packages
+(so `python3 -m brakelab` works from anywhere), and `run.command` also sets `PYTHONPATH` itself.
+
+> **macOS note:** a `python -m venv` virtualenv is normally preferred, but on the stock
+> CommandLineTools Python the venv's PySide6 can fail to load its Qt plugins
+> (*"Could not find the Qt platform plugin cocoa"*). If that happens, use the system Python +
+> `run.command` as above. Installing a full Python from python.org and using a venv there also
+> resolves it.
 
 ## Design principles
 1. **Correctness first** — physics lives in a pure, fully-tested core validated against
