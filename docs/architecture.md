@@ -1,6 +1,9 @@
 # Architecture — FSAE Brake Design Tool
 
 **Status:** proposed (for discussion before implementation)
+
+> **Decisions (2026-07-03):** GUI framework = **PySide6/Qt** (§7). B1 default =
+> `front_weight_fraction = 0.52` / front-biased 52F/48R (see `calculation_audit.md`).
 **Goal:** replace the braking spreadsheet with a maintainable, extensible desktop engineering
 tool that becomes the Controls team's standard brake-design environment.
 

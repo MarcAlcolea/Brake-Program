@@ -75,6 +75,12 @@ confirmed, not guessed. The engine will take **front weight fraction** as a sing
 input and derive `b`, `c`, and both axle loads from it consistently, making this class of error
 impossible.
 
+> **Decision (2026-07-03):** default `front_weight_fraction = 0.52` (front-biased 52F/48R,
+> option b). This reproduces the spreadsheet's current output numbers, so golden-value tests can
+> be checked against the existing sheet, while the single-input design removes the
+> label/formula disagreement. **Still to confirm with suspension** — if the true bias is
+> rearward, only this one input changes and everything re-derives correctly.
+
 ---
 
 ## Phase 2 — Tire & torque requirements
