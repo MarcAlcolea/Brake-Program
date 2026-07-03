@@ -172,11 +172,11 @@ envelope.
 | Effective stroke `= (stroke_f+stroke_r)/2` | ✅ | |
 | Stroke + compliance, ×PR → pedal travel | ✅ | ⚠️ **B3, B4, B5** |
 
-### ❌/⚠️ B3 — Piston-travel assumption is inconsistent and likely a typo
-Pad clearance take-up (`piston_travel`) is **0.15 mm** on x2 but **1.2 mm** on x1. This single
-number dominates pedal travel: x2 → 29.4 mm, x1 → 74.7 mm. 0.15 mm is almost certainly a typo
-(order of magnitude low). This is a *sensitivity* the tool should expose rather than bury as a
-hidden constant.
+### ⚠️ B3 — Piston-travel is an input, not a hidden constant
+Pad clearance take-up (`piston_travel`) is **0.15 mm** on x2 and **1.2 mm** on x1. This single
+number dominates pedal travel (x2 → 29.4 mm, x1 → 74.7 mm). **Confirmed by Marc (2026-07-03):
+0.15 mm is correct.** The engine exposes it as a per-caliper input so the sensitivity is visible
+rather than buried; the two sheets simply used different values for their two setups.
 
 ### ⚠️ B4 — Caliper piston area used with two different values
 Phase 3 uses `A_cal = 793.55 mm²`; pedal-travel uses `A_piston = 792 mm²`. Small, but there

@@ -1,0 +1,48 @@
+{
+  "name": "2026 Baseline (x2 Outboarded)",
+  "mass": {
+    "total_mass": 320.0,
+    "cg_height": 0.3556,
+    "wheelbase": 1.625,
+    "front_weight_fraction": 0.52
+  },
+  "tires": {
+    "friction_coefficient": 1.5,
+    "loaded_radius": 0.224
+  },
+  "front_axle": {
+    "n_rotors": 2,
+    "inboard": false,
+    "driveline_ratio": 1.0
+  },
+  "rear_axle": {
+    "n_rotors": 2,
+    "inboard": false,
+    "driveline_ratio": 1.0
+  },
+  "rotor": {
+    "effective_radius": 0.0885
+  },
+  "pad": {
+    "friction_coefficient": 0.48
+  },
+  "caliper": {
+    "piston_area": 793.55,
+    "n_pistons": 2,
+    "piston_travel": 0.15
+  },
+  "hydraulics": {
+    "mc_bore_front": 15.875,
+    "mc_bore_rear": 15.875
+  },
+  "pedal_box": {
+    "pedal_ratio": 6.0,
+    "balance_bias_front": 0.65,
+    "driver_force": 400.0,
+    "compliance": 2.5,
+    "bots_margin": 3.5
+  },
+  "target_decel_g": 1.5,
+  "notes": "Reproduces the x2 Outboarded spreadsheet sheet.",
+  "schema_version": 1
+}
