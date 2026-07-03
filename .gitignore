@@ -12,3 +12,5 @@ dist/
 !docs/**/*.pdf
 .idea/
 .vscode/
+
+.claude/
