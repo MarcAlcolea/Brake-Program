@@ -1,0 +1,7 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(cd \"/Users/marc/Desktop/Brake Program\" && ls -la && echo \"---UPLOADS---\" && ls -la \"/Users/marc/Library/Application Support/Claude/local-agent-mode-sessions/3cb0fb19-015b-4774-a435-2bdb0a3b8af7/cc47498b-7a4b-4725-92fa-7b6f0c5be571/local_3071c0dc-c986-4361-971a-fcff4feea70d/uploads/\")"
+    ]
+  }
+}
