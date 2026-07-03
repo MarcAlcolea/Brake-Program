@@ -40,9 +40,11 @@ class DetailsPanel(QGroupBox):
         self._body = QTextEdit()
         self._body.setReadOnly(True)
         self._body.setFrameStyle(0)
+        layout.setContentsMargins(8, 4, 8, 4)
+        layout.setSpacing(2)
         layout.addWidget(self._title)
         layout.addWidget(self._body)
-        self.setMaximumHeight(150)
+        self.setMaximumHeight(96)
 
     def show_details(self, title: str, body: str) -> None:
         self._title.setText(title)

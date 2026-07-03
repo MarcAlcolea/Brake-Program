@@ -49,6 +49,7 @@ class InputPanel(QWidget):
 
         for group in GROUPS:
             box = QGroupBox(group.title)
+            box.setStyleSheet("QGroupBox::title { font-weight: bold; }")
             grid = QGridLayout(box)
             grid.setColumnStretch(1, 1)
             for row, field in enumerate(group.fields):

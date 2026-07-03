@@ -17,12 +17,14 @@ from PySide6.QtCore import Qt
 from PySide6.QtGui import QAction
 from PySide6.QtWidgets import (
     QApplication,
+    QCheckBox,
     QFileDialog,
     QMainWindow,
     QMessageBox,
     QScrollArea,
     QSplitter,
     QTabWidget,
+    QToolBar,
     QVBoxLayout,
     QWidget,
 )
@@ -34,6 +36,7 @@ from .controller import ProjectController
 from .panels.compare_tab import CompareTab
 from .panels.config_bar import ConfigBar
 from .panels.input_panel import InputPanel
+from .panels.optimization_tab import OptimizationTab
 from .panels.outputs_panel import OutputsPanel
 from .panels.requirements_panel import RequirementsPanel
 from .plots.plot_panel import PlotPanel
@@ -49,18 +52,27 @@ class MainWindow(QMainWindow):
         self._details = DetailsPanel()
 
         self._compare = CompareTab(library)
+        self._optimize = OptimizationTab(self.controller, library)
         self._outputs = OutputsPanel(self.controller, self._details.show_details)
 
-        tabs = QTabWidget()
-        tabs.addTab(self._build_design_tab(), "Design")
-        tabs.addTab(self._compare, "Compare")
-        tabs.addTab(PlotPanel(self.controller), "Plots")
-        tabs.currentChanged.connect(lambda _i: self._compare.reload_configs())
-        self.setCentralWidget(tabs)
+        self._tabs = QTabWidget()
+        self._tabs.addTab(self._build_design_tab(), "Design")
+        self._tabs.addTab(self._optimize, "Optimize")
+        self._tabs.addTab(self._compare, "Compare")
+        self._tabs.addTab(PlotPanel(self.controller), "Plots")
+        self._tabs.currentChanged.connect(self._on_tab_changed)
+        self.setCentralWidget(self._tabs)
 
-        self._build_menu()
+        self._build_toolbar()
         self.controller.configReplaced.connect(lambda c: self._set_title(c.name))
         self._set_title(controller.config.name)
+
+    def _on_tab_changed(self, _index: int) -> None:
+        widget = self._tabs.currentWidget()
+        if widget is self._compare:
+            self._compare.reload_configs()
+        elif widget is self._optimize:
+            self._optimize.refresh_current()
 
     def _build_design_tab(self) -> QWidget:
         inputs = QScrollArea()
@@ -88,16 +100,20 @@ class MainWindow(QMainWindow):
         layout.addWidget(self._details)
         return wrapper
 
-    def _build_menu(self) -> None:
-        view = self.menuBar().addMenu("View")
-        self._dark_action = QAction("Dark mode", self, checkable=True, checked=theme.is_dark())
-        self._dark_action.triggered.connect(self._toggle_dark)
-        view.addAction(self._dark_action)
+    def _build_toolbar(self) -> None:
+        bar = QToolBar("Main")
+        bar.setMovable(False)
+        self.addToolBar(bar)
 
-        file_menu = self.menuBar().addMenu("File")
+        self._dark_check = QCheckBox("Dark mode")
+        self._dark_check.setChecked(theme.is_dark())
+        self._dark_check.toggled.connect(self._toggle_dark)
+        bar.addWidget(self._dark_check)
+        bar.addSeparator()
+
         report = QAction("Export PDF report…", self)
         report.triggered.connect(self._report)
-        file_menu.addAction(report)
+        bar.addAction(report)
 
     def _toggle_dark(self, checked: bool) -> None:
         app = QApplication.instance()

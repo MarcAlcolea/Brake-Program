@@ -89,7 +89,11 @@ class OutputsPanel(QWidget):
                 self._value_items.append((output, value))
                 self._row_output[row] = output
 
-    def _on_cell_clicked(self, row: int, _col: int) -> None:
+    _INFO_COL = 3
+
+    def _on_cell_clicked(self, row: int, col: int) -> None:
+        if col != self._INFO_COL:
+            return  # only the ⓘ column opens details, not the value/label cells
         output = self._row_output.get(row)
         if output:
             note = f"Formula:  {output.formula}"

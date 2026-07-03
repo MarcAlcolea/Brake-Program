@@ -63,7 +63,11 @@ class RequirementsPanel(QWidget):
         controller.resultsChanged.connect(self.refresh)
         self.refresh(controller.results)
 
-    def _on_cell_clicked(self, row: int, _col: int) -> None:
+    _INFO_COL = 4
+
+    def _on_cell_clicked(self, row: int, col: int) -> None:
+        if col != self._INFO_COL:
+            return  # only the ⓘ column opens details
         req = self._row_req.get(row)
         if req:
             self._sink(req.name, req.description)
