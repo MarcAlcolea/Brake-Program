@@ -1,5 +1,13 @@
-"""Configuration persistence (JSON save/load)."""
+"""Configuration persistence: JSON save/load and the in-program library."""
 
 from .config_io import config_from_dict, config_to_dict, load_config, save_config
+from .library import ConfigLibrary, app_data_dir
 
-__all__ = ["save_config", "load_config", "config_to_dict", "config_from_dict"]
+__all__ = [
+    "save_config",
+    "load_config",
+    "config_to_dict",
+    "config_from_dict",
+    "ConfigLibrary",
+    "app_data_dir",
+]

@@ -1,16 +1,17 @@
-"""Main window: a tabbed layout with a bare-bones, consistent look.
+"""Main window: a simple, light, tabbed layout.
 
-- "Design" tab: INPUTS on the left; REQUIREMENTS (top) and OUTPUTS (bottom) on the right. Editing
-  any input recomputes live and refreshes the outputs and requirements.
-- "Plots" tab: charts, kept separate so they never crowd the numbers (more plots to come).
+- "Design" tab: a configuration bar (presets, save/rename, import/export) on top; INPUTS on the
+  left; REQUIREMENTS (top) and OUTPUTS (bottom) on the right. Editing recomputes live.
+- "Compare" tab: two saved configurations side by side.
+- "Plots" tab: charts, kept separate.
 
-No custom stylesheets — default Qt widgets throughout.
+Configurations are stored in an in-program library (:class:`ConfigLibrary`) and can also be
+exported to a folder to share. The look is a single light Helvetica theme (see ``theme``).
 """
 
 from __future__ import annotations
 
 import sys
-from pathlib import Path
 
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QAction
@@ -27,37 +28,42 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from .. import reference_configs
 from ..core.models import VehicleConfig
+from ..persistence import ConfigLibrary
 from .controller import ProjectController
+from .panels.compare_tab import CompareTab
+from .panels.config_bar import ConfigBar
 from .panels.input_panel import InputPanel
 from .panels.outputs_panel import OutputsPanel
 from .panels.requirements_panel import RequirementsPanel
 from .plots.plot_panel import PlotPanel
-
-_CONFIG_DIR = Path(__file__).resolve().parents[3] / "configs"
+from .theme import apply_light_theme
 
 
 class MainWindow(QMainWindow):
-    def __init__(self, config: VehicleConfig) -> None:
+    def __init__(self, controller: ProjectController, library: ConfigLibrary) -> None:
         super().__init__()
         self.resize(1200, 820)
-        self.controller = ProjectController(config)
+        self.controller = controller
+        self.library = library
 
+        self._compare = CompareTab(library)
         tabs = QTabWidget()
         tabs.addTab(self._build_design_tab(), "Design")
-        tabs.addTab(self._build_plots_tab(), "Plots")
+        tabs.addTab(self._compare, "Compare")
+        tabs.addTab(PlotPanel(self.controller), "Plots")
+        tabs.currentChanged.connect(lambda _i: self._compare.reload_configs())
         self.setCentralWidget(tabs)
 
         self._build_toolbar()
         self.controller.configReplaced.connect(lambda c: self._set_title(c.name))
-        self._set_title(config.name)
+        self._set_title(controller.config.name)
 
     def _build_design_tab(self) -> QWidget:
         inputs = QScrollArea()
         inputs.setWidgetResizable(True)
         inputs.setWidget(InputPanel(self.controller))
-        inputs.setMinimumWidth(360)
+        inputs.setMinimumWidth(380)
 
         right = QSplitter(Qt.Vertical)
         right.addWidget(RequirementsPanel(self.controller))
@@ -65,56 +71,48 @@ class MainWindow(QMainWindow):
         right.setStretchFactor(0, 0)
         right.setStretchFactor(1, 1)
 
-        splitter = QSplitter(Qt.Horizontal)
-        splitter.addWidget(inputs)
-        splitter.addWidget(right)
-        splitter.setStretchFactor(0, 0)
-        splitter.setStretchFactor(1, 1)
+        body = QSplitter(Qt.Horizontal)
+        body.addWidget(inputs)
+        body.addWidget(right)
+        body.setStretchFactor(0, 0)
+        body.setStretchFactor(1, 1)
 
         wrapper = QWidget()
         layout = QVBoxLayout(wrapper)
-        layout.setContentsMargins(0, 0, 0, 0)
-        layout.addWidget(splitter)
+        layout.setContentsMargins(4, 4, 4, 4)
+        layout.addWidget(ConfigBar(self.controller, self.library))
+        layout.addWidget(body, 1)
         return wrapper
-
-    def _build_plots_tab(self) -> QWidget:
-        return PlotPanel(self.controller)
 
     def _build_toolbar(self) -> None:
         bar = QToolBar("Main")
         self.addToolBar(bar)
-        for text, slot in (("Open…", self._open), ("Save…", self._save), ("Export PDF…", self._report)):
-            action = QAction(text, self)
-            action.triggered.connect(slot)
-            bar.addAction(action)
+        action = QAction("Export PDF report…", self)
+        action.triggered.connect(self._report)
+        bar.addAction(action)
 
     def _set_title(self, name: str) -> None:
         self.setWindowTitle(f"BrakeLab — {name}")
 
-    def _open(self) -> None:
-        path, _ = QFileDialog.getOpenFileName(self, "Open configuration", str(_CONFIG_DIR), "JSON (*.json)")
-        if path:
-            try:
-                self.controller.load(path)
-            except Exception as exc:  # noqa: BLE001 — surface any load error to the user
-                QMessageBox.critical(self, "Open failed", str(exc))
-
-    def _save(self) -> None:
-        path, _ = QFileDialog.getSaveFileName(self, "Save configuration", str(_CONFIG_DIR), "JSON (*.json)")
-        if path:
-            self.controller.save(path)
-
     def _report(self) -> None:
-        path, _ = QFileDialog.getSaveFileName(self, "Export PDF report", str(_CONFIG_DIR), "PDF (*.pdf)")
+        path, _ = QFileDialog.getSaveFileName(self, "Export PDF report", f"{self.controller.config.name}.pdf", "PDF (*.pdf)")
         if path:
             self.controller.export_report(path)
             QMessageBox.information(self, "Report exported", f"Saved to {path}")
 
 
 def run(config: VehicleConfig | None = None) -> int:
-    """Launch the GUI. Defaults to the 2026 baseline configuration."""
+    """Launch the GUI. Seeds the library on first run and opens the default preset."""
     app = QApplication.instance() or QApplication(sys.argv)
-    window = MainWindow(config or reference_configs.outboarded_x2())
+    apply_light_theme(app)
+
+    library = ConfigLibrary()
+    library.seed_defaults()
+    if config is None:
+        config = library.load(library.default_name)
+
+    controller = ProjectController(config)
+    window = MainWindow(controller, library)
     window.show()
     return app.exec()
 
