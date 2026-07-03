@@ -32,6 +32,21 @@ def _fmt(value: float) -> str:
     return f"{value:.6g}"
 
 
+def _bold_title(box: QGroupBox) -> QGroupBox:
+    f = box.font()
+    f.setBold(True)
+    box.setFont(f)
+    return box
+
+
+def _normal(w: QWidget) -> QWidget:
+    """Reset a child widget to a non-bold font (group box's bold font would otherwise inherit)."""
+    f = w.font()
+    f.setBold(False)
+    w.setFont(f)
+    return w
+
+
 class InputPanel(QWidget):
     def __init__(self, controller: ProjectController, sink: InfoSink, parent: QWidget | None = None) -> None:
         super().__init__(parent)
@@ -49,15 +64,15 @@ class InputPanel(QWidget):
 
         for group in GROUPS:
             box = QGroupBox(group.title)
-            box.setStyleSheet("QGroupBox::title { font-weight: bold; }")
+            _bold_title(box)  # bold the group title via font (NOT a stylesheet, which breaks the palette)
             grid = QGridLayout(box)
             grid.setColumnStretch(1, 1)
             for row, field in enumerate(group.fields):
-                grid.addWidget(QLabel(field.label), row, 0)
-                grid.addWidget(self._make_editor(field), row, 1)
-                grid.addWidget(self._make_unit_widget(field), row, 2)
+                grid.addWidget(_normal(QLabel(field.label)), row, 0)
+                grid.addWidget(_normal(self._make_editor(field)), row, 1)
+                grid.addWidget(_normal(self._make_unit_widget(field)), row, 2)
                 if field.note:
-                    grid.addWidget(InfoButton(field.label, field.note, sink), row, 3)
+                    grid.addWidget(_normal(InfoButton(field.label, field.note, sink)), row, 3)
             layout.addWidget(box)
         layout.addStretch(1)
 

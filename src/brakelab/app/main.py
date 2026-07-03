@@ -3,10 +3,11 @@
 - "Design" tab: a configuration bar (presets, save/rename, import/export) on top; INPUTS on the
   left; REQUIREMENTS (top) and OUTPUTS (bottom) on the right; a Details area along the bottom that
   shows the note/formula for whatever ⓘ you click (no external pop-ups).
+- "Optimize" tab: the optimization studio.
 - "Compare" tab: two saved configurations side by side.
 - "Plots" tab: charts, kept separate.
 
-A View menu toggles light/dark. The theme is applied globally (see ``theme``).
+A toggle button in the tab-bar corner switches light/dark; the theme is applied globally (``theme``).
 """
 
 from __future__ import annotations
@@ -14,17 +15,16 @@ from __future__ import annotations
 import sys
 
 from PySide6.QtCore import Qt
-from PySide6.QtGui import QAction
 from PySide6.QtWidgets import (
     QApplication,
-    QCheckBox,
     QFileDialog,
+    QHBoxLayout,
     QMainWindow,
     QMessageBox,
+    QPushButton,
     QScrollArea,
     QSplitter,
     QTabWidget,
-    QToolBar,
     QVBoxLayout,
     QWidget,
 )
@@ -61,9 +61,9 @@ class MainWindow(QMainWindow):
         self._tabs.addTab(self._compare, "Compare")
         self._tabs.addTab(PlotPanel(self.controller), "Plots")
         self._tabs.currentChanged.connect(self._on_tab_changed)
+        self._tabs.setCornerWidget(self._build_corner(), Qt.TopRightCorner)
         self.setCentralWidget(self._tabs)
 
-        self._build_toolbar()
         self.controller.configReplaced.connect(lambda c: self._set_title(c.name))
         self._set_title(controller.config.name)
 
@@ -100,25 +100,31 @@ class MainWindow(QMainWindow):
         layout.addWidget(self._details)
         return wrapper
 
-    def _build_toolbar(self) -> None:
-        bar = QToolBar("Main")
-        bar.setMovable(False)
-        self.addToolBar(bar)
+    def _build_corner(self) -> QWidget:
+        """Controls that live in the tab-bar's top-right corner (no extra top row)."""
+        corner = QWidget()
+        row = QHBoxLayout(corner)
+        row.setContentsMargins(0, 0, 6, 0)
+        row.setSpacing(6)
 
-        self._dark_check = QCheckBox("Dark mode")
-        self._dark_check.setChecked(theme.is_dark())
-        self._dark_check.toggled.connect(self._toggle_dark)
-        bar.addWidget(self._dark_check)
-        bar.addSeparator()
+        export = QPushButton("Export PDF…")
+        export.clicked.connect(self._report)
+        row.addWidget(export)
 
-        report = QAction("Export PDF report…", self)
-        report.triggered.connect(self._report)
-        bar.addAction(report)
+        self._theme_btn = QPushButton()
+        self._theme_btn.clicked.connect(self._toggle_dark)
+        self._update_theme_button()
+        row.addWidget(self._theme_btn)
+        return corner
 
-    def _toggle_dark(self, checked: bool) -> None:
+    def _update_theme_button(self) -> None:
+        self._theme_btn.setText("Switch to Light Mode" if theme.is_dark() else "Switch to Dark Mode")
+
+    def _toggle_dark(self) -> None:
         app = QApplication.instance()
         if app:
-            theme.apply_theme(app, dark=checked)
+            theme.apply_theme(app, dark=not theme.is_dark())
+            self._update_theme_button()
             self._outputs.reset_highlights()
 
     def _set_title(self, name: str) -> None:
