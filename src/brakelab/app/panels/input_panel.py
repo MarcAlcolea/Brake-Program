@@ -1,7 +1,8 @@
-"""Categorized input panels built from the declarative field spec.
+"""INPUTS panel — categorized input forms built from the declarative field spec.
 
-Each :class:`~brakelab.app.field_spec.Group` becomes a titled form; each field becomes a bound
-widget that writes back to the controller (which recomputes and notifies everyone else).
+Each field is a labelled editor bound to the controller (edit → recompute → everyone refreshes).
+The label carries an "ⓘ" and a hover tooltip showing that input's note, so the meaning of every
+parameter is one hover away. Plain default Qt widgets throughout — no custom styling.
 """
 
 from __future__ import annotations
@@ -22,7 +23,7 @@ from ..field_spec import GROUPS, Field
 
 
 class InputPanel(QWidget):
-    """A scrollable stack of grouped input forms bound to the controller."""
+    """A vertical stack of grouped input forms bound to the controller."""
 
     def __init__(self, controller: ProjectController, parent: QWidget | None = None) -> None:
         super().__init__(parent)
@@ -30,15 +31,21 @@ class InputPanel(QWidget):
         self._editors: dict[str, QWidget] = {}
 
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(8, 8, 8, 8)
+        heading = QLabel("INPUTS")
+        heading.setToolTip("Design parameters. Hover the ⓘ on any label to see what it means.")
+        layout.addWidget(heading)
+
         for group in GROUPS:
             box = QGroupBox(group.title)
             form = QFormLayout(box)
             for field in group.fields:
                 editor = self._make_editor(field)
                 self._editors[field.path] = editor
-                label = field.label + (f"  [{field.unit}]" if field.unit else "")
-                form.addRow(QLabel(label), editor)
+                label = QLabel(f"{field.label}  ⓘ" if field.note else field.label)
+                if field.note:
+                    label.setToolTip(field.note)
+                    editor.setToolTip(field.note)
+                form.addRow(label, editor)
             layout.addWidget(box)
         layout.addStretch(1)
 
@@ -62,7 +69,8 @@ class InputPanel(QWidget):
         w.setRange(field.minimum, field.maximum)
         w.setSingleStep(field.step)
         w.setDecimals(field.decimals)
-        w.setSuffix(f" {field.unit}" if field.unit and field.unit != "-" else "")
+        if field.unit and field.unit != "-":
+            w.setSuffix(f" {field.unit}")
         w.setValue(float(value))
         w.valueChanged.connect(lambda v, p=field.path: self._controller.set_value(p, float(v)))
         return w

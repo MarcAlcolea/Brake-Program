@@ -59,13 +59,16 @@ class HydraulicsResult:
 
 @dataclass(frozen=True)
 class PedalTravelResult:
-    volume_front: float             # mm³
-    volume_rear: float              # mm³
-    mc_stroke_front: float          # mm
-    mc_stroke_rear: float           # mm
-    effective_stroke: float         # mm — average, with compliance
-    pedal_travel: float             # mm — at the pedal
-    bots_trigger: float             # mm — effective stroke + margin
+    total_piston_area_front: float      # mm² — all front caliper pistons (both sides)
+    total_piston_area_rear: float       # mm²
+    volume_front: float                 # mm³
+    volume_rear: float                  # mm³
+    mc_stroke_front: float              # mm
+    mc_stroke_rear: float               # mm
+    theoretical_effective_stroke: float  # mm — average of the two MC strokes (no compliance)
+    effective_stroke: float             # mm — theoretical + compliance
+    pedal_travel: float                 # mm — at the pedal
+    bots_trigger: float                 # mm — effective stroke + margin
 
 
 @dataclass(frozen=True)
@@ -75,16 +78,30 @@ class ValidationMessage:
 
 
 @dataclass(frozen=True)
+class Requirement:
+    """A single engineering check with enough detail to see exactly why it passes or fails."""
+
+    name: str                       # short label, e.g. "Front braking authority"
+    description: str                # what it means / why it matters
+    condition: str                  # symbolic condition, e.g. "F_pedal ≥ F_bar,front"
+    detail: str                     # the condition with current numbers filled in
+    passed: bool
+    hard: bool = True               # True = must pass; False = a desirable target (soft)
+
+
+@dataclass(frozen=True)
 class BrakeResults:
     dynamics: DynamicsResult
     torque: TorqueResult
     sizing: SizingResult
     hydraulics: HydraulicsResult
     pedal_travel: PedalTravelResult
+    requirements: tuple[Requirement, ...] = field(default_factory=tuple)
     messages: tuple[ValidationMessage, ...] = field(default_factory=tuple)
 
     @property
     def ok(self) -> bool:
-        """True if no validation errors and both axle braking requirements are met."""
+        """True if no validation errors and every hard requirement passes."""
         no_errors = all(m.level != "error" for m in self.messages)
-        return no_errors and self.hydraulics.front_requirement_met and self.hydraulics.rear_requirement_met
+        hard_ok = all(r.passed for r in self.requirements if r.hard)
+        return no_errors and hard_ok

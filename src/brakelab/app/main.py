@@ -1,7 +1,10 @@
-"""Main window: assembles the input, results and plot panels and the file actions.
+"""Main window: a tabbed layout with a bare-bones, consistent look.
 
-Layout is a three-pane splitter — inputs (left, scrollable) · results (centre) · plot (right).
-Editing any input recomputes live via the controller. Toolbar actions handle open/save/report.
+- "Design" tab: INPUTS on the left; REQUIREMENTS (top) and OUTPUTS (bottom) on the right. Editing
+  any input recomputes live and refreshes the outputs and requirements.
+- "Plots" tab: charts, kept separate so they never crowd the numbers (more plots to come).
+
+No custom stylesheets — default Qt widgets throughout.
 """
 
 from __future__ import annotations
@@ -9,6 +12,8 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
+from PySide6.QtCore import Qt
+from PySide6.QtGui import QAction
 from PySide6.QtWidgets import (
     QApplication,
     QFileDialog,
@@ -16,17 +21,18 @@ from PySide6.QtWidgets import (
     QMessageBox,
     QScrollArea,
     QSplitter,
+    QTabWidget,
     QToolBar,
+    QVBoxLayout,
     QWidget,
 )
-from PySide6.QtCore import Qt
-from PySide6.QtGui import QAction
 
 from .. import reference_configs
 from ..core.models import VehicleConfig
 from .controller import ProjectController
 from .panels.input_panel import InputPanel
-from .panels.results_panel import ResultsPanel
+from .panels.outputs_panel import OutputsPanel
+from .panels.requirements_panel import RequirementsPanel
 from .plots.plot_panel import PlotPanel
 
 _CONFIG_DIR = Path(__file__).resolve().parents[3] / "configs"
@@ -35,28 +41,44 @@ _CONFIG_DIR = Path(__file__).resolve().parents[3] / "configs"
 class MainWindow(QMainWindow):
     def __init__(self, config: VehicleConfig) -> None:
         super().__init__()
-        self.setWindowTitle("BrakeLab — FSAE Brake Design Tool")
-        self.resize(1280, 800)
-
+        self.resize(1200, 820)
         self.controller = ProjectController(config)
 
-        input_scroll = QScrollArea()
-        input_scroll.setWidgetResizable(True)
-        input_scroll.setWidget(InputPanel(self.controller))
-        input_scroll.setMinimumWidth(340)
-
-        splitter = QSplitter(Qt.Horizontal)
-        splitter.addWidget(input_scroll)
-        splitter.addWidget(ResultsPanel(self.controller))
-        splitter.addWidget(PlotPanel(self.controller))
-        splitter.setStretchFactor(0, 0)
-        splitter.setStretchFactor(1, 1)
-        splitter.setStretchFactor(2, 1)
-        self.setCentralWidget(splitter)
+        tabs = QTabWidget()
+        tabs.addTab(self._build_design_tab(), "Design")
+        tabs.addTab(self._build_plots_tab(), "Plots")
+        self.setCentralWidget(tabs)
 
         self._build_toolbar()
-        self.controller.configReplaced.connect(lambda c: self.setWindowTitle(f"BrakeLab — {c.name}"))
-        self.setWindowTitle(f"BrakeLab — {config.name}")
+        self.controller.configReplaced.connect(lambda c: self._set_title(c.name))
+        self._set_title(config.name)
+
+    def _build_design_tab(self) -> QWidget:
+        inputs = QScrollArea()
+        inputs.setWidgetResizable(True)
+        inputs.setWidget(InputPanel(self.controller))
+        inputs.setMinimumWidth(360)
+
+        right = QSplitter(Qt.Vertical)
+        right.addWidget(RequirementsPanel(self.controller))
+        right.addWidget(OutputsPanel(self.controller))
+        right.setStretchFactor(0, 0)
+        right.setStretchFactor(1, 1)
+
+        splitter = QSplitter(Qt.Horizontal)
+        splitter.addWidget(inputs)
+        splitter.addWidget(right)
+        splitter.setStretchFactor(0, 0)
+        splitter.setStretchFactor(1, 1)
+
+        wrapper = QWidget()
+        layout = QVBoxLayout(wrapper)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.addWidget(splitter)
+        return wrapper
+
+    def _build_plots_tab(self) -> QWidget:
+        return PlotPanel(self.controller)
 
     def _build_toolbar(self) -> None:
         bar = QToolBar("Main")
@@ -65,6 +87,9 @@ class MainWindow(QMainWindow):
             action = QAction(text, self)
             action.triggered.connect(slot)
             bar.addAction(action)
+
+    def _set_title(self, name: str) -> None:
+        self.setWindowTitle(f"BrakeLab — {name}")
 
     def _open(self) -> None:
         path, _ = QFileDialog.getOpenFileName(self, "Open configuration", str(_CONFIG_DIR), "JSON (*.json)")

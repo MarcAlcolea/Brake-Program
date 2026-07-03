@@ -93,6 +93,7 @@ class Hydraulics:
 
     mc_bore_front: float            # mm — front master-cylinder bore diameter
     mc_bore_rear: float             # mm — rear master-cylinder bore diameter
+    max_mc_stroke: float = 27.94    # mm — maximum available MC stroke (e.g. Tilton 76/78 = 1.1")
 
     @property
     def mc_area_front(self) -> float:

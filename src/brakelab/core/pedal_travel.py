@@ -29,21 +29,27 @@ def solve_pedal_travel(
     pedal_box: PedalBox,
 ) -> PedalTravelResult:
     """Fluid volume, MC stroke, and pedal travel."""
-    volume_front = front_axle.n_rotors * caliper.displacing_area * caliper.piston_travel
-    volume_rear = rear_axle.n_rotors * caliper.displacing_area * caliper.piston_travel
+    total_area_front = front_axle.n_rotors * caliper.displacing_area
+    total_area_rear = rear_axle.n_rotors * caliper.displacing_area
+    volume_front = total_area_front * caliper.piston_travel
+    volume_rear = total_area_rear * caliper.piston_travel
 
     stroke_front = volume_front / hydraulics.mc_area_front
     stroke_rear = volume_rear / hydraulics.mc_area_rear
 
-    effective_stroke = (stroke_front + stroke_rear) / 2.0 + pedal_box.compliance
+    theoretical_effective_stroke = (stroke_front + stroke_rear) / 2.0
+    effective_stroke = theoretical_effective_stroke + pedal_box.compliance
     pedal_travel = effective_stroke * pedal_box.pedal_ratio
     bots_trigger = effective_stroke + pedal_box.bots_margin
 
     return PedalTravelResult(
+        total_piston_area_front=total_area_front,
+        total_piston_area_rear=total_area_rear,
         volume_front=volume_front,
         volume_rear=volume_rear,
         mc_stroke_front=stroke_front,
         mc_stroke_rear=stroke_rear,
+        theoretical_effective_stroke=theoretical_effective_stroke,
         effective_stroke=effective_stroke,
         pedal_travel=pedal_travel,
         bots_trigger=bots_trigger,
