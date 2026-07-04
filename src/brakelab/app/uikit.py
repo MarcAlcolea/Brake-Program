@@ -7,7 +7,52 @@ rather than a scroll area inside another scroll area.
 from __future__ import annotations
 
 from PySide6.QtCore import Qt
-from PySide6.QtWidgets import QAbstractItemView, QHeaderView, QLabel, QTableWidget
+from PySide6.QtWidgets import (
+    QAbstractItemView,
+    QComboBox,
+    QHeaderView,
+    QLabel,
+    QListWidget,
+    QStyle,
+    QStyledItemDelegate,
+    QTableWidget,
+)
+
+
+class _BoldCurrentDelegate(QStyledItemDelegate):
+    """Draws the current item in bold and everything else normally, with no selection box.
+
+    ``current`` returns the index that should be bold. Reads the live palette at paint time, so it
+    stays correct when the theme changes.
+    """
+
+    def __init__(self, current, strip_hover: bool = False, parent=None) -> None:
+        super().__init__(parent)
+        self._current = current
+        self._strip_hover = strip_hover
+
+    def initStyleOption(self, option, index) -> None:
+        super().initStyleOption(option, index)
+        if index.row() == self._current():
+            option.font.setBold(True)
+
+    def paint(self, painter, option, index) -> None:
+        option.state &= ~QStyle.State_Selected
+        if self._strip_hover:
+            option.state &= ~QStyle.State_MouseOver
+        super().paint(painter, option, index)
+
+
+def style_combo(combo: QComboBox) -> QComboBox:
+    """Show a combo's chosen option in bold in the popup instead of a grey highlight box."""
+    combo.view().setItemDelegate(_BoldCurrentDelegate(combo.currentIndex, strip_hover=False, parent=combo))
+    return combo
+
+
+def style_nav(nav: QListWidget) -> QListWidget:
+    """Bold the active sidebar item and drop the grey selection box."""
+    nav.setItemDelegate(_BoldCurrentDelegate(nav.currentRow, strip_hover=True, parent=nav))
+    return nav
 
 
 def plain_table(headers: list[str], stretch_col: int = 0) -> QTableWidget:

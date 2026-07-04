@@ -47,10 +47,13 @@ class CompareTab(QWidget):
         selectors.addWidget(QLabel("Compare"))
         self._combo_a = QComboBox()
         self._combo_b = QComboBox()
+        from ..uikit import style_combo
+
         for combo in (self._combo_a, self._combo_b):
             combo.setMinimumWidth(240)
             combo.setMaxVisibleItems(20)
             combo.currentTextChanged.connect(self.refresh)
+            style_combo(combo)
         selectors.addWidget(self._combo_a)
         selectors.addWidget(QLabel("with"))
         selectors.addWidget(self._combo_b)

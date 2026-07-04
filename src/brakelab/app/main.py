@@ -40,6 +40,7 @@ from .panels.optimization_tab import OptimizationTab
 from .panels.outputs_panel import OutputsPanel
 from .panels.requirements_panel import RequirementsPanel
 from .plots.plot_panel import PlotPanel
+from .uikit import style_nav
 
 _PAGES = ["Design", "Optimize", "Compare", "Plots"]
 
@@ -88,9 +89,10 @@ class MainWindow(QMainWindow):
         self._nav = QListWidget()
         self._nav.addItems(_PAGES)
         self._nav.setFrameShape(QFrame.NoFrame)
-        self._nav.setSpacing(2)
+        self._nav.setSpacing(4)
         self._nav.setFont(theme.heading_font(14, bold=False))
         self._nav.currentRowChanged.connect(self._on_page)
+        style_nav(self._nav)  # active tab shown in bold, no grey selection box
         v.addWidget(self._nav, 1)
 
         self._theme_btn = QPushButton()

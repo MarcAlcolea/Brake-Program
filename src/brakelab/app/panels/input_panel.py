@@ -21,6 +21,7 @@ from PySide6.QtWidgets import (
 
 from ...core.unit_convert import compatible_units, convert
 from ..controller import ProjectController
+from ..uikit import style_combo
 from ..widgets import CollapsibleSection, InfoButton
 
 
@@ -82,7 +83,7 @@ class InputPanel(QWidget):
         combo.setCurrentText(field.unit)
         combo.setMaxVisibleItems(len(units))
         combo.currentTextChanged.connect(lambda u, fld=field: self._change_unit(fld, u))
-        return combo
+        return style_combo(combo)
 
     def _display_text(self, field, canonical_value: float) -> str:
         if field.kind == "int":

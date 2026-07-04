@@ -54,7 +54,7 @@ from ...optimization.report import build_optimization_report
 from ...persistence import ConfigLibrary
 from .. import theme
 from ..controller import ProjectController
-from ..uikit import fit_table, plain_table
+from ..uikit import fit_table, plain_table, style_combo
 from ..widgets import CollapsibleSection
 
 _VARIABLES = [
@@ -158,6 +158,7 @@ class OptimizationTab(QWidget):
                 source.addItems([_RANGE] + catalog.master_cylinder_series() + [_ALL_MC])
                 source.setCurrentIndex(1)
                 source.setMaxVisibleItems(8)
+                style_combo(source)
                 source.currentTextChanged.connect(lambda t, a=mn, b=mx: (a.setEnabled(t == _RANGE), b.setEnabled(t == _RANGE)))
                 mn.setEnabled(False)
                 mx.setEnabled(False)
@@ -186,6 +187,7 @@ class OptimizationTab(QWidget):
             goal = QComboBox()
             goal.addItems([s.value for s in Sense])
             goal.setMaxVisibleItems(6)
+            style_combo(goal)
             table.setCellWidget(row, 3, goal)
             target = _edit("0")
             weight = _edit("1", 52)
@@ -243,6 +245,7 @@ class OptimizationTab(QWidget):
         self._effort.addItems(list(EFFORT_PRESETS.keys()))
         self._effort.setCurrentText("Balanced")
         self._effort.setMaxVisibleItems(6)
+        style_combo(self._effort)
         row.addWidget(self._effort)
         adv = QCheckBox("Show advanced")
         adv.toggled.connect(lambda on: self._advanced.setVisible(on))
@@ -257,6 +260,7 @@ class OptimizationTab(QWidget):
         self._algorithm = QComboBox()
         self._algorithm.addItems(list(ALGORITHMS.keys()))
         self._algorithm.setMaxVisibleItems(6)
+        style_combo(self._algorithm)
         al.addWidget(self._algorithm)
         al.addWidget(QLabel("Alternatives"))
         self._alternatives = _edit("5", 48)

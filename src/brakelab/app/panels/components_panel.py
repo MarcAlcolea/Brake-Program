@@ -10,6 +10,7 @@ from PySide6.QtWidgets import QComboBox, QFormLayout, QLabel, QVBoxLayout, QWidg
 
 from ...components import catalog
 from ..controller import ProjectController
+from ..uikit import style_combo
 from ..widgets import CollapsibleSection
 
 
@@ -46,7 +47,7 @@ class ComponentsPanel(QWidget):
         combo.addItems(names)
         combo.setMaxVisibleItems(len(names) + 1)
         combo.activated.connect(lambda _i, c=combo, s=slot: s(c.currentText()))
-        return combo
+        return style_combo(combo)
 
     def _apply_front_mc(self, name: str) -> None:
         mc = _find(catalog.MASTER_CYLINDERS, name)

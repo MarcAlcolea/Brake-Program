@@ -23,6 +23,7 @@ from PySide6.QtWidgets import (
 
 from ...persistence import ConfigLibrary, load_config, save_config
 from ..controller import ProjectController
+from ..uikit import style_combo
 
 
 class ConfigBar(QWidget):
@@ -39,6 +40,7 @@ class ConfigBar(QWidget):
         self._combo.setMinimumWidth(240)
         self._combo.setMaxVisibleItems(20)
         self._combo.currentTextChanged.connect(self._on_selected)
+        style_combo(self._combo)
         row.addWidget(self._combo)
 
         save = QPushButton("Save")
