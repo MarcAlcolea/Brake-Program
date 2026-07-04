@@ -1,105 +1,69 @@
-"""OUTPUTS panel — every computed quantity, grouped by phase, in a plain table.
+"""Outputs — one collapsible table per phase, each sized to its content (no inner scroll).
 
-Columns: Quantity · Value · Unit · ⓘ. After each input change, values that went up are tinted green
-and values that went down are tinted red (theme-aware), so it's easy to see what a change affected.
-Clicking a row's ⓘ sends its formula and note to the in-window Details area.
+After each input change, values that rose are tinted green and values that fell are tinted red
+(theme-aware). Clicking a row's ⓘ opens its formula and note in a popover next to the icon.
 """
 
 from __future__ import annotations
 
 from PySide6.QtCore import Qt
-from PySide6.QtGui import QColor, QFont
-from PySide6.QtWidgets import (
-    QAbstractItemView,
-    QHeaderView,
-    QLabel,
-    QTableWidget,
-    QTableWidgetItem,
-    QVBoxLayout,
-    QWidget,
-)
+from PySide6.QtGui import QColor
+from PySide6.QtWidgets import QTableWidget, QTableWidgetItem, QVBoxLayout, QWidget
 
 from ...core.results import BrakeResults
 from .. import theme
 from ..controller import ProjectController
 from ..output_spec import GROUPS, Output
-from ..widgets import InfoSink
+from ..uikit import fit_table, plain_table
+from ..widgets import CollapsibleSection, show_popover
 
-_TRANSPARENT = QColor(0, 0, 0, 0)
+_CLEAR = QColor(0, 0, 0, 0)
 
 
 class OutputsPanel(QWidget):
-    def __init__(self, controller: ProjectController, sink: InfoSink, parent: QWidget | None = None) -> None:
+    def __init__(self, controller: ProjectController, parent: QWidget | None = None) -> None:
         super().__init__(parent)
         self._controller = controller
-        self._sink = sink
         self._value_items: list[tuple[Output, QTableWidgetItem]] = []
-        self._row_output: dict[int, Output] = {}
         self._previous: dict[str, float] = {}
 
         layout = QVBoxLayout(self)
-        title = QLabel("OUTPUTS")
-        tf = title.font()
-        tf.setBold(True)
-        title.setFont(tf)
-        layout.addWidget(title)
+        layout.setContentsMargins(2, 2, 2, 2)
+        layout.setSpacing(2)
+        for group in GROUPS:
+            table = plain_table(["Quantity", "Value", "Unit", ""], stretch_col=0)
+            row_output: dict[int, Output] = {}
+            table.setRowCount(len(group.outputs))
+            for row, output in enumerate(group.outputs):
+                table.setItem(row, 0, QTableWidgetItem(output.label))
+                value = QTableWidgetItem("")
+                value.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
+                table.setItem(row, 1, value)
+                table.setItem(row, 2, QTableWidgetItem(output.unit))
+                info = QTableWidgetItem("ⓘ")
+                info.setTextAlignment(Qt.AlignCenter)
+                table.setItem(row, 3, info)
+                self._value_items.append((output, value))
+                row_output[row] = output
+            table.cellClicked.connect(lambda r, c, t=table, m=row_output: self._info(t, r, c, m))
+            fit_table(table)
+            layout.addWidget(CollapsibleSection(group.title, table, expanded=True))
+        layout.addStretch(1)
 
-        self._table = QTableWidget(0, 4)
-        self._table.setHorizontalHeaderLabels(["Quantity", "Value", "Unit", ""])
-        self._table.verticalHeader().setVisible(False)
-        self._table.setEditTriggers(QAbstractItemView.NoEditTriggers)
-        self._table.setSelectionMode(QAbstractItemView.NoSelection)
-        self._table.setShowGrid(False)
-        header = self._table.horizontalHeader()
-        header.setSectionResizeMode(0, QHeaderView.Stretch)
-        header.setSectionResizeMode(1, QHeaderView.ResizeToContents)
-        header.setSectionResizeMode(2, QHeaderView.ResizeToContents)
-        header.setSectionResizeMode(3, QHeaderView.ResizeToContents)
-        self._table.cellClicked.connect(self._on_cell_clicked)
-        layout.addWidget(self._table)
-
-        self._build_rows()
         controller.resultsChanged.connect(self.refresh)
         controller.configReplaced.connect(lambda _c: self._previous.clear())
         self.refresh(controller.results)
 
-    def _build_rows(self) -> None:
-        bold = QFont()
-        bold.setBold(True)
-        for group in GROUPS:
-            row = self._table.rowCount()
-            self._table.insertRow(row)
-            header_item = QTableWidgetItem(group.title)
-            header_item.setFont(bold)
-            header_item.setFlags(Qt.ItemIsEnabled)
-            self._table.setItem(row, 0, header_item)
-            self._table.setSpan(row, 0, 1, 4)
-
-            for output in group.outputs:
-                row = self._table.rowCount()
-                self._table.insertRow(row)
-                value = QTableWidgetItem("")
-                value.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
-                info = QTableWidgetItem("ⓘ")
-                info.setTextAlignment(Qt.AlignCenter)
-                self._table.setItem(row, 0, QTableWidgetItem(output.label))
-                self._table.setItem(row, 1, value)
-                self._table.setItem(row, 2, QTableWidgetItem(output.unit))
-                self._table.setItem(row, 3, info)
-                self._value_items.append((output, value))
-                self._row_output[row] = output
-
-    _INFO_COL = 3
-
-    def _on_cell_clicked(self, row: int, col: int) -> None:
-        if col != self._INFO_COL:
-            return  # only the ⓘ column opens details, not the value/label cells
-        output = self._row_output.get(row)
-        if output:
-            note = f"Formula:  {output.formula}"
-            if output.description:
-                note += f"\n\n{output.description}"
-            self._sink(output.label, note)
+    def _info(self, table: QTableWidget, row: int, col: int, mapping: dict[int, Output]) -> None:
+        if col != 3 or row not in mapping:
+            return
+        output = mapping[row]
+        rect = table.visualRect(table.model().index(row, col))
+        pos = table.viewport().mapToGlobal(rect.bottomLeft())
+        body = f"Formula:  {output.formula}"
+        if output.description:
+            body += f"\n\n{output.description}"
+        show_popover(pos, output.label, body)
 
     def refresh(self, results: BrakeResults) -> None:
         config = self._controller.config
@@ -107,17 +71,13 @@ class OutputsPanel(QWidget):
             val = output.getter(results, config)
             decimals = 3 if abs(val) < 100 else 1
             item.setText(f"{val:,.{decimals}f}")
-
             prev = self._previous.get(output.label)
             if prev is None or abs(val - prev) < 1e-9:
-                item.setBackground(_TRANSPARENT)
-            elif val > prev:
-                item.setBackground(theme.increase_color())
+                item.setBackground(_CLEAR)
             else:
-                item.setBackground(theme.decrease_color())
+                item.setBackground(theme.increase_color() if val > prev else theme.decrease_color())
             self._previous[output.label] = val
 
     def reset_highlights(self) -> None:
-        """Re-clear/re-evaluate highlight colours (e.g. after a theme change)."""
         for _output, item in self._value_items:
-            item.setBackground(_TRANSPARENT)
+            item.setBackground(_CLEAR)

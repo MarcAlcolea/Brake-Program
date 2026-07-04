@@ -1,8 +1,7 @@
-"""Configuration bar — pick, save, rename and share saved configurations.
+"""Configuration bar — choose a preset and save; extra actions live behind a compact menu.
 
-The dropdown lists everything in the in-program library. From here you can save the current inputs
-as a preset, rename or delete presets, and import/export JSON files to share a configuration with
-others. Editing inputs changes the working copy; use Save (or Save As) to store it in the library.
+The dropdown lists the in-program library. Save / Save As are one click; Rename, Delete, Import and
+Export-to-folder are grouped under a "⋯" menu to keep the row uncluttered.
 """
 
 from __future__ import annotations
@@ -15,8 +14,10 @@ from PySide6.QtWidgets import (
     QHBoxLayout,
     QInputDialog,
     QLabel,
+    QMenu,
     QMessageBox,
     QPushButton,
+    QToolButton,
     QWidget,
 )
 
@@ -30,35 +31,38 @@ class ConfigBar(QWidget):
         self._controller = controller
         self._library = library
 
-        layout = QHBoxLayout(self)
-        layout.setContentsMargins(4, 4, 4, 4)
-        layout.addWidget(QLabel("Configuration:"))
+        row = QHBoxLayout(self)
+        row.setContentsMargins(2, 2, 2, 2)
+        row.addWidget(QLabel("Configuration"))
 
         self._combo = QComboBox()
-        self._combo.setMinimumWidth(220)
+        self._combo.setMinimumWidth(240)
+        self._combo.setMaxVisibleItems(20)
         self._combo.currentTextChanged.connect(self._on_selected)
-        layout.addWidget(self._combo)
+        row.addWidget(self._combo)
 
-        for text, slot in (
-            ("Save", self._save),
-            ("Save As…", self._save_as),
-            ("Rename…", self._rename),
-            ("Delete", self._delete),
-        ):
-            b = QPushButton(text)
-            b.clicked.connect(slot)
-            layout.addWidget(b)
+        save = QPushButton("Save")
+        save.clicked.connect(self._save)
+        save_as = QPushButton("Save As…")
+        save_as.clicked.connect(self._save_as)
+        row.addWidget(save)
+        row.addWidget(save_as)
 
-        layout.addSpacing(16)
-        for text, slot in (("Import…", self._import), ("Export to folder…", self._export)):
-            b = QPushButton(text)
-            b.clicked.connect(slot)
-            layout.addWidget(b)
-        layout.addStretch(1)
+        more = QToolButton()
+        more.setText("⋯")
+        more.setPopupMode(QToolButton.InstantPopup)
+        menu = QMenu(more)
+        menu.addAction("Rename…", self._rename)
+        menu.addAction("Delete", self._delete)
+        menu.addSeparator()
+        menu.addAction("Import…", self._import)
+        menu.addAction("Export to folder…", self._export)
+        more.setMenu(menu)
+        row.addWidget(more)
+        row.addStretch(1)
 
         self._reload_combo(select=controller.config.name)
 
-    # --- combo management --------------------------------------------------------------------
     def _reload_combo(self, select: str | None = None) -> None:
         self._combo.blockSignals(True)
         self._combo.clear()
@@ -73,7 +77,6 @@ class ConfigBar(QWidget):
         if name and name != self._controller.config.name:
             self._controller.replace_config(self._library.load(name))
 
-    # --- actions -----------------------------------------------------------------------------
     def _save(self) -> None:
         self._library.save(self._controller.config)
         self._reload_combo(select=self._controller.config.name)
@@ -83,11 +86,11 @@ class ConfigBar(QWidget):
         name = name.strip()
         if not ok or not name:
             return
-        if self._library.exists(name) and not self._confirm_overwrite(name):
+        if self._library.exists(name) and not self._confirm(name):
             return
         self._controller.config.name = name
         self._library.save(self._controller.config)
-        self._controller.configReplaced.emit(self._controller.config)  # refresh title/inputs
+        self._controller.configReplaced.emit(self._controller.config)
         self._reload_combo(select=name)
 
     def _rename(self) -> None:
@@ -96,7 +99,7 @@ class ConfigBar(QWidget):
         name = name.strip()
         if not ok or not name or name == current:
             return
-        if self._library.exists(name) and not self._confirm_overwrite(name):
+        if self._library.exists(name) and not self._confirm(name):
             return
         if self._library.exists(current):
             self._library.rename(current, name)
@@ -136,5 +139,5 @@ class ConfigBar(QWidget):
             save_config(self._controller.config, path)
             QMessageBox.information(self, "Exported", f"Saved to {path}")
 
-    def _confirm_overwrite(self, name: str) -> bool:
+    def _confirm(self, name: str) -> bool:
         return QMessageBox.question(self, "Overwrite", f"'{name}' already exists. Overwrite?") == QMessageBox.Yes

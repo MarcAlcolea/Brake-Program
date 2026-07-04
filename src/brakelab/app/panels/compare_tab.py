@@ -48,7 +48,8 @@ class CompareTab(QWidget):
         self._combo_a = QComboBox()
         self._combo_b = QComboBox()
         for combo in (self._combo_a, self._combo_b):
-            combo.setMinimumWidth(220)
+            combo.setMinimumWidth(240)
+            combo.setMaxVisibleItems(20)
             combo.currentTextChanged.connect(self.refresh)
         selectors.addWidget(self._combo_a)
         selectors.addWidget(QLabel("with"))
@@ -62,7 +63,9 @@ class CompareTab(QWidget):
         self._table.setEditTriggers(QAbstractItemView.NoEditTriggers)
         self._table.setSelectionMode(QAbstractItemView.NoSelection)
         self._table.setShowGrid(False)
+        self._table.setFrameShape(QTableWidget.NoFrame)
         header = self._table.horizontalHeader()
+        header.setHighlightSections(False)
         header.setSectionResizeMode(0, QHeaderView.Stretch)
         header.setSectionResizeMode(1, QHeaderView.ResizeToContents)
         header.setSectionResizeMode(2, QHeaderView.ResizeToContents)
@@ -93,12 +96,12 @@ class CompareTab(QWidget):
         cfg_a, cfg_b = self._library.load(name_a), self._library.load(name_b)
         self._table.setRowCount(0)
 
-        self._section("INPUTS")
+        self._section("Inputs")
         for group in GROUPS:
             for field in group.fields:
                 self._row(field.label, get_by_path(cfg_a, field.path), get_by_path(cfg_b, field.path))
 
-        self._section("KEY OUTPUTS")
+        self._section("Key outputs")
         ra, rb = self._engine.solve(cfg_a), self._engine.solve(cfg_b)
         self._row("Front line pressure [MPa]", ra.sizing.front.line_pressure, rb.sizing.front.line_pressure)
         self._row("Rear line pressure [MPa]", ra.sizing.rear.line_pressure, rb.sizing.rear.line_pressure)

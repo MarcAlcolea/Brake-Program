@@ -1,13 +1,10 @@
-"""Main window: a simple, tabbed, light-or-dark layout.
+"""Main window: a left sidebar selects pages shown in a stacked area.
 
-- "Design" tab: a configuration bar (presets, save/rename, import/export) on top; INPUTS on the
-  left; REQUIREMENTS (top) and OUTPUTS (bottom) on the right; a Details area along the bottom that
-  shows the note/formula for whatever ⓘ you click (no external pop-ups).
-- "Optimize" tab: the optimization studio.
-- "Compare" tab: two saved configurations side by side.
-- "Plots" tab: charts, kept separate.
+- Design: configuration bar on top; components + inputs on the left, requirements + outputs on the
+  right (one scroll per column). Clicking any ⓘ opens a popover next to it.
+- Optimize / Compare / Plots: the optimization studio, side-by-side comparison, and charts.
 
-A toggle button in the tab-bar corner switches light/dark; the theme is applied globally (``theme``).
+The sidebar footer holds the light/dark toggle and PDF export. One simple, flat theme (see ``theme``).
 """
 
 from __future__ import annotations
@@ -18,13 +15,15 @@ from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
     QApplication,
     QFileDialog,
+    QFrame,
     QHBoxLayout,
+    QListWidget,
     QMainWindow,
     QMessageBox,
     QPushButton,
     QScrollArea,
     QSplitter,
-    QTabWidget,
+    QStackedWidget,
     QVBoxLayout,
     QWidget,
 )
@@ -41,90 +40,111 @@ from .panels.optimization_tab import OptimizationTab
 from .panels.outputs_panel import OutputsPanel
 from .panels.requirements_panel import RequirementsPanel
 from .plots.plot_panel import PlotPanel
-from .widgets import DetailsPanel
+
+_PAGES = ["Design", "Optimize", "Compare", "Plots"]
 
 
 class MainWindow(QMainWindow):
     def __init__(self, controller: ProjectController, library: ConfigLibrary) -> None:
         super().__init__()
-        self.resize(1280, 860)
+        self.resize(1240, 840)
         self.controller = controller
         self.library = library
-        self._details = DetailsPanel()
 
+        self._outputs = OutputsPanel(self.controller)
         self._compare = CompareTab(library)
         self._optimize = OptimizationTab(self.controller, library)
-        self._outputs = OutputsPanel(self.controller, self._details.show_details)
 
-        self._tabs = QTabWidget()
-        self._tabs.addTab(self._build_design_tab(), "Design")
-        self._tabs.addTab(self._optimize, "Optimize")
-        self._tabs.addTab(self._compare, "Compare")
-        self._tabs.addTab(PlotPanel(self.controller), "Plots")
-        self._tabs.currentChanged.connect(self._on_tab_changed)
-        self._tabs.setCornerWidget(self._build_corner(), Qt.TopRightCorner)
-        self.setCentralWidget(self._tabs)
+        self._stack = QStackedWidget()
+        self._stack.addWidget(self._design_page())
+        self._stack.addWidget(self._optimize)
+        self._stack.addWidget(self._compare)
+        self._stack.addWidget(PlotPanel(self.controller))
+
+        central = QWidget()
+        row = QHBoxLayout(central)
+        row.setContentsMargins(0, 0, 0, 0)
+        row.setSpacing(0)
+        row.addWidget(self._sidebar())
+        divider = QFrame()
+        divider.setFrameShape(QFrame.VLine)
+        divider.setStyleSheet(f"color: {theme.border_color()};")
+        row.addWidget(divider)
+        row.addWidget(self._stack, 1)
+        self.setCentralWidget(central)
 
         self.controller.configReplaced.connect(lambda c: self._set_title(c.name))
         self._set_title(controller.config.name)
+        self._nav.setCurrentRow(0)
 
-    def _on_tab_changed(self, _index: int) -> None:
-        widget = self._tabs.currentWidget()
-        if widget is self._compare:
-            self._compare.reload_configs()
-        elif widget is self._optimize:
-            self._optimize.refresh_current()
+    # ---- sidebar ----------------------------------------------------------------------------
+    def _sidebar(self) -> QWidget:
+        panel = QWidget()
+        panel.setFixedWidth(168)
+        v = QVBoxLayout(panel)
+        v.setContentsMargins(8, 12, 8, 12)
+        v.setSpacing(8)
 
-    def _build_design_tab(self) -> QWidget:
-        left = QWidget()
-        left_layout = QVBoxLayout(left)
-        left_layout.setContentsMargins(0, 0, 0, 0)
-        left_layout.addWidget(ComponentsPanel(self.controller))
-        left_layout.addWidget(InputPanel(self.controller, self._details.show_details))
-        inputs = QScrollArea()
-        inputs.setWidgetResizable(True)
-        inputs.setWidget(left)
-        inputs.setMinimumWidth(420)
-
-        right = QSplitter(Qt.Vertical)
-        right.addWidget(RequirementsPanel(self.controller, self._details.show_details))
-        right.addWidget(self._outputs)
-        right.setStretchFactor(0, 0)
-        right.setStretchFactor(1, 1)
-
-        body = QSplitter(Qt.Horizontal)
-        body.addWidget(inputs)
-        body.addWidget(right)
-        body.setStretchFactor(0, 0)
-        body.setStretchFactor(1, 1)
-
-        wrapper = QWidget()
-        layout = QVBoxLayout(wrapper)
-        layout.setContentsMargins(4, 4, 4, 4)
-        layout.addWidget(ConfigBar(self.controller, self.library))
-        layout.addWidget(body, 1)
-        layout.addWidget(self._details)
-        return wrapper
-
-    def _build_corner(self) -> QWidget:
-        """Controls that live in the tab-bar's top-right corner (no extra top row)."""
-        corner = QWidget()
-        row = QHBoxLayout(corner)
-        row.setContentsMargins(0, 0, 6, 0)
-        row.setSpacing(6)
-
-        export = QPushButton("Export PDF…")
-        export.clicked.connect(self._report)
-        row.addWidget(export)
+        self._nav = QListWidget()
+        self._nav.addItems(_PAGES)
+        self._nav.setFrameShape(QFrame.NoFrame)
+        self._nav.setSpacing(2)
+        self._nav.setFont(theme.heading_font(14, bold=False))
+        self._nav.currentRowChanged.connect(self._on_page)
+        v.addWidget(self._nav, 1)
 
         self._theme_btn = QPushButton()
         self._theme_btn.clicked.connect(self._toggle_dark)
         self._update_theme_button()
-        row.addWidget(self._theme_btn)
-        return corner
+        v.addWidget(self._theme_btn)
 
+        export = QPushButton("Export PDF…")
+        export.clicked.connect(self._report)
+        v.addWidget(export)
+        return panel
+
+    def _on_page(self, index: int) -> None:
+        self._stack.setCurrentIndex(index)
+        if self._stack.currentWidget() is self._compare:
+            self._compare.reload_configs()
+        elif self._stack.currentWidget() is self._optimize:
+            self._optimize.refresh_current()
+
+    # ---- design page ------------------------------------------------------------------------
+    def _design_page(self) -> QWidget:
+        left = QWidget()
+        lv = QVBoxLayout(left)
+        lv.setContentsMargins(4, 4, 4, 4)
+        lv.addWidget(ComponentsPanel(self.controller))
+        lv.addWidget(InputPanel(self.controller))
+        lv.addStretch(1)
+        left_scroll = _scroll(left)
+        left_scroll.setMinimumWidth(430)
+
+        right = QWidget()
+        rv = QVBoxLayout(right)
+        rv.setContentsMargins(4, 4, 4, 4)
+        rv.addWidget(RequirementsPanel(self.controller))
+        rv.addWidget(self._outputs)
+        rv.addStretch(1)
+        right_scroll = _scroll(right)
+
+        splitter = QSplitter(Qt.Horizontal)
+        splitter.addWidget(left_scroll)
+        splitter.addWidget(right_scroll)
+        splitter.setStretchFactor(0, 0)
+        splitter.setStretchFactor(1, 1)
+
+        page = QWidget()
+        v = QVBoxLayout(page)
+        v.setContentsMargins(6, 6, 6, 2)
+        v.addWidget(ConfigBar(self.controller, self.library))
+        v.addWidget(splitter, 1)
+        return page
+
+    # ---- theme / actions --------------------------------------------------------------------
     def _update_theme_button(self) -> None:
-        self._theme_btn.setText("Switch to Light Mode" if theme.is_dark() else "Switch to Dark Mode")
+        self._theme_btn.setText("Switch to light" if theme.is_dark() else "Switch to dark")
 
     def _toggle_dark(self) -> None:
         app = QApplication.instance()
@@ -141,6 +161,14 @@ class MainWindow(QMainWindow):
         if path:
             self.controller.export_report(path)
             QMessageBox.information(self, "Report exported", f"Saved to {path}")
+
+
+def _scroll(widget: QWidget) -> QScrollArea:
+    area = QScrollArea()
+    area.setWidgetResizable(True)
+    area.setFrameShape(QScrollArea.NoFrame)
+    area.setWidget(widget)
+    return area
 
 
 def run(config: VehicleConfig | None = None) -> int:

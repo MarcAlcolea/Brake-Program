@@ -1,8 +1,8 @@
-"""Application theming: a simple light theme and a matching dark theme, toggleable at runtime.
+"""Application theming: a genuinely light theme and a genuinely dark theme.
 
-Both are plain and low-colour (white/near-black), Helvetica, using the Fusion style so the palette
-applies consistently and independently of the system setting. A small module-level flag records the
-current mode so panels can pick readable "increased / decreased" highlight colours.
+Design goals: mostly white in light mode (almost no grey), near-black in dark mode, Helvetica Light
+for body text with Helvetica Bold used sparingly for headings. The Fusion style makes the palette
+apply consistently. A module flag records the current mode so widgets can pick readable accents.
 """
 
 from __future__ import annotations
@@ -10,8 +10,8 @@ from __future__ import annotations
 from PySide6.QtGui import QColor, QFont, QPalette
 from PySide6.QtWidgets import QApplication
 
-FONT_FAMILY = "Helvetica"
-FONT_SIZE = 13
+_FAMILIES = ["Helvetica Neue", "Helvetica", "Arial"]
+_SIZE = 13
 
 _is_dark = False
 
@@ -20,52 +20,73 @@ def is_dark() -> bool:
     return _is_dark
 
 
-def _palette(window, text, base, button, highlight, placeholder) -> QPalette:
-    p = QPalette()
-    p.setColor(QPalette.Window, window)
-    p.setColor(QPalette.WindowText, text)
-    p.setColor(QPalette.Base, base)
-    p.setColor(QPalette.AlternateBase, base)
-    p.setColor(QPalette.Text, text)
-    p.setColor(QPalette.Button, button)
-    p.setColor(QPalette.ButtonText, text)
-    p.setColor(QPalette.Highlight, highlight)
-    p.setColor(QPalette.HighlightedText, text)
-    p.setColor(QPalette.ToolTipBase, base)
-    p.setColor(QPalette.ToolTipText, text)
-    p.setColor(QPalette.PlaceholderText, placeholder)
-    return p
+def body_font() -> QFont:
+    f = QFont()
+    f.setFamilies(_FAMILIES)
+    f.setPointSize(_SIZE)
+    f.setWeight(QFont.Weight.Light)
+    return f
 
 
+def heading_font(size: int = _SIZE, bold: bool = True) -> QFont:
+    f = QFont()
+    f.setFamilies(_FAMILIES)
+    f.setPointSize(size)
+    f.setWeight(QFont.Weight.Bold if bold else QFont.Weight.Light)
+    return f
+
+
+# ---- palette ---------------------------------------------------------------------------------
 def apply_theme(app: QApplication, dark: bool) -> None:
     global _is_dark
     _is_dark = dark
     app.setStyle("Fusion")
-    app.setFont(QFont(FONT_FAMILY, FONT_SIZE))
+    app.setFont(body_font())
+
     if dark:
-        app.setPalette(
-            _palette(
-                QColor("#2b2b2b"), QColor("#e6e6e6"), QColor("#232323"),
-                QColor("#3a3a3a"), QColor("#4a4a4a"), QColor("#8a8a8a"),
-            )
-        )
+        win = QColor("#141414")
+        base = QColor("#161616")
+        text = QColor("#ececec")
+        button = QColor("#1f1f1f")
+        highlight = QColor("#2c2c2c")
+        placeholder = QColor("#7a7a7a")
     else:
-        app.setPalette(
-            _palette(
-                QColor("#ffffff"), QColor("#1a1a1a"), QColor("#ffffff"),
-                QColor("#f2f2f2"), QColor("#dcdcdc"), QColor("#9a9a9a"),
-            )
-        )
+        win = QColor("#ffffff")
+        base = QColor("#ffffff")
+        text = QColor("#1a1a1a")
+        button = QColor("#ffffff")
+        highlight = QColor("#e9eef7")
+        placeholder = QColor("#a0a0a0")
+
+    p = QPalette()
+    for role in (QPalette.Window, QPalette.Base, QPalette.AlternateBase, QPalette.ToolTipBase, QPalette.Button):
+        p.setColor(role, win if role in (QPalette.Window,) else base if role != QPalette.Button else button)
+    p.setColor(QPalette.WindowText, text)
+    p.setColor(QPalette.Text, text)
+    p.setColor(QPalette.ToolTipText, text)
+    p.setColor(QPalette.ButtonText, text)
+    p.setColor(QPalette.Highlight, highlight)
+    p.setColor(QPalette.HighlightedText, text)
+    p.setColor(QPalette.PlaceholderText, placeholder)
+    app.setPalette(p)
 
 
-def apply_light_theme(app: QApplication) -> None:
-    apply_theme(app, dark=False)
+# ---- accent helpers --------------------------------------------------------------------------
+def card_bg() -> str:
+    return "#1c1c1c" if _is_dark else "#ffffff"
 
 
-# Highlight colours for values that increased / decreased since the last recompute.
+def border_color() -> str:
+    return "#333333" if _is_dark else "#e4e4e4"
+
+
+def muted_text() -> str:
+    return "#9a9a9a" if _is_dark else "#767676"
+
+
 def increase_color() -> QColor:
-    return QColor("#1e5e2f") if _is_dark else QColor("#d7f0d7")
+    return QColor("#1e5330") if _is_dark else QColor("#e3f5e6")
 
 
 def decrease_color() -> QColor:
-    return QColor("#6e2020") if _is_dark else QColor("#f6d9d9")
+    return QColor("#5c1f1f") if _is_dark else QColor("#fbe4e4")

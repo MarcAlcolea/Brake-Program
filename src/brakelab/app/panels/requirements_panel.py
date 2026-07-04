@@ -1,100 +1,64 @@
-"""REQUIREMENTS panel — what the current inputs require vs what the setup produces.
+"""Requirements — what the inputs require vs what the setup produces, in one compact table.
 
-Columns: Requirement · What the inputs require · What the setup produces · Status · ⓘ. No inequality
-symbols — each side is a plain phrase. Pass/fail is shown as ✓ / ✗ (monochrome). Clicking a row's ⓘ
-sends its spreadsheet comment to the in-window Details area.
+No inequality symbols; pass/fail as ✓ / ✗. A short status line sits on top. Clicking a row's ⓘ
+opens its note in a popover next to the icon.
 """
 
 from __future__ import annotations
 
-from PySide6.QtCore import Qt
-from PySide6.QtWidgets import (
-    QAbstractItemView,
-    QHeaderView,
-    QLabel,
-    QTableWidget,
-    QTableWidgetItem,
-    QVBoxLayout,
-    QWidget,
-)
+from PySide6.QtWidgets import QLabel, QTableWidget, QTableWidgetItem, QVBoxLayout, QWidget
 
 from ...core.results import BrakeResults, Requirement
+from .. import theme
 from ..controller import ProjectController
-from ..widgets import InfoSink
+from ..uikit import fit_table, muted, plain_table
+from ..widgets import show_popover
 
 
 class RequirementsPanel(QWidget):
-    def __init__(self, controller: ProjectController, sink: InfoSink, parent: QWidget | None = None) -> None:
+    def __init__(self, controller: ProjectController, parent: QWidget | None = None) -> None:
         super().__init__(parent)
-        self._sink = sink
         self._row_req: dict[int, Requirement] = {}
 
         layout = QVBoxLayout(self)
-        title = QLabel("REQUIREMENTS")
-        tf = title.font()
-        tf.setBold(True)
-        title.setFont(tf)
-        layout.addWidget(title)
+        layout.setContentsMargins(2, 2, 2, 2)
+        layout.setSpacing(4)
 
-        self._verdict = QLabel()
-        vf = self._verdict.font()
-        vf.setBold(True)
-        vf.setPointSize(vf.pointSize() + 1)
-        self._verdict.setFont(vf)
-        layout.addWidget(self._verdict)
+        heading = QLabel("Requirements")
+        heading.setFont(theme.heading_font())
+        layout.addWidget(heading)
+        self._status = QLabel()
+        layout.addWidget(self._status)
 
-        self._table = QTableWidget(0, 5)
-        self._table.setHorizontalHeaderLabels(
-            ["Requirement", "The inputs require", "The setup produces", "Status", ""]
-        )
-        self._table.verticalHeader().setVisible(False)
-        self._table.setEditTriggers(QAbstractItemView.NoEditTriggers)
-        self._table.setSelectionMode(QAbstractItemView.NoSelection)
-        self._table.setShowGrid(False)
-        header = self._table.horizontalHeader()
-        header.setSectionResizeMode(0, QHeaderView.Stretch)
-        header.setSectionResizeMode(1, QHeaderView.ResizeToContents)
-        header.setSectionResizeMode(2, QHeaderView.ResizeToContents)
-        header.setSectionResizeMode(3, QHeaderView.ResizeToContents)
-        header.setSectionResizeMode(4, QHeaderView.ResizeToContents)
-        self._table.cellClicked.connect(self._on_cell_clicked)
+        self._table = plain_table(["Requirement", "The inputs require", "The setup produces", "Status", ""], stretch_col=0)
+        self._table.cellClicked.connect(self._info)
         layout.addWidget(self._table)
 
         controller.resultsChanged.connect(self.refresh)
         self.refresh(controller.results)
 
-    _INFO_COL = 4
-
-    def _on_cell_clicked(self, row: int, col: int) -> None:
-        if col != self._INFO_COL:
-            return  # only the ⓘ column opens details
-        req = self._row_req.get(row)
-        if req:
-            self._sink(req.name, req.description)
+    def _info(self, row: int, col: int) -> None:
+        if col != 4 or row not in self._row_req:
+            return
+        req = self._row_req[row]
+        rect = self._table.visualRect(self._table.model().index(row, col))
+        pos = self._table.viewport().mapToGlobal(rect.bottomLeft())
+        show_popover(pos, req.name, req.description)
 
     def refresh(self, results: BrakeResults) -> None:
         reqs = results.requirements
         self._row_req = dict(enumerate(reqs))
         self._table.setRowCount(len(reqs))
         for row, req in enumerate(reqs):
-            name = QTableWidgetItem(req.name + ("" if req.hard else "  (target)"))
-            require = QTableWidgetItem(req.requirement_text)
-            produce = QTableWidgetItem(req.current_text)
-            if req.passed:
-                status_text = "✓ PASS"
-            elif req.hard:
-                status_text = "✗ FAIL"
-            else:
-                status_text = "✗ off target"
-            status = QTableWidgetItem(status_text)
+            self._table.setItem(row, 0, QTableWidgetItem(req.name + ("" if req.hard else "  (target)")))
+            self._table.setItem(row, 1, QTableWidgetItem(req.requirement_text))
+            self._table.setItem(row, 2, QTableWidgetItem(req.current_text))
+            status = "✓ Pass" if req.passed else ("✗ Fail" if req.hard else "✗ Off target")
+            self._table.setItem(row, 3, QTableWidgetItem(status))
             info = QTableWidgetItem("ⓘ")
-            info.setTextAlignment(Qt.AlignCenter)
-            self._table.setItem(row, 0, name)
-            self._table.setItem(row, 1, require)
-            self._table.setItem(row, 2, produce)
-            self._table.setItem(row, 3, status)
             self._table.setItem(row, 4, info)
+        fit_table(self._table)
 
-        self._verdict.setText(
-            "Status:  ALL REQUIREMENTS MET" if results.ok else "Status:  REQUIREMENTS NOT MET"
-        )
+        ok = results.ok
+        self._status.setText("All requirements met" if ok else "Requirements not met")
+        muted(self._status, "#3aa564" if ok else "#d05a5a")
