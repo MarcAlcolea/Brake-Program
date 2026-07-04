@@ -9,12 +9,35 @@ from __future__ import annotations
 
 import random
 
-from ..problem import OptimizationProblem
+from ..problem import OptimizationProblem, Variable
 from .base import Evaluation, Evaluator, Optimizer
 
 
 def _ranked(evals: list[Evaluation]) -> list[Evaluation]:
     return sorted(evals, key=lambda e: (0 if e.feasible else 1, e.score))
+
+
+def _sample(var: Variable, rng: random.Random) -> float:
+    if var.discrete:
+        return rng.choice(var.choices)
+    return rng.uniform(var.minimum, var.maximum)
+
+
+def _start_value(var: Variable) -> float:
+    mid = (var.minimum + var.maximum) / 2
+    if var.discrete:
+        return min(var.choices, key=lambda c: abs(c - mid))
+    return mid
+
+
+def _neighbors(var: Variable, current: float, step: float) -> list[float]:
+    """Candidate moves for the polish pass — adjacent choices for discrete, +/- step for continuous."""
+    if var.discrete:
+        ordered = sorted(var.choices)
+        idx = min(range(len(ordered)), key=lambda i: abs(ordered[i] - current))
+        return [ordered[i] for i in (idx - 1, idx + 1) if 0 <= i < len(ordered)]
+    span = var.maximum - var.minimum
+    return [min(var.maximum, current + step * span), max(var.minimum, current - step * span)]
 
 
 class RandomSearchOptimizer(Optimizer):
@@ -27,12 +50,10 @@ class RandomSearchOptimizer(Optimizer):
         rng = random.Random(problem.settings.seed)
         collected: list[Evaluation] = []
 
-        # Start from the current values, then sample the space.
-        start = {v.path: (v.minimum + v.maximum) / 2 for v in variables}
-        collected.append(evaluate(start))
+        # Start from a central value, then sample the space (discrete vars draw from their choices).
+        collected.append(evaluate({v.path: _start_value(v) for v in variables}))
         for _ in range(max(1, problem.settings.iterations)):
-            values = {v.path: rng.uniform(v.minimum, v.maximum) for v in variables}
-            collected.append(evaluate(values))
+            collected.append(evaluate({v.path: _sample(v, rng) for v in variables}))
 
         best = _ranked(collected)[0]
 
@@ -41,10 +62,9 @@ class RandomSearchOptimizer(Optimizer):
         for _ in range(60):
             improved = False
             for v in variables:
-                span = v.maximum - v.minimum
-                for delta in (step * span, -step * span):
+                for value in _neighbors(v, best.values[v.path], step):
                     trial = dict(best.values)
-                    trial[v.path] = min(v.maximum, max(v.minimum, best.values[v.path] + delta))
+                    trial[v.path] = value
                     cand = evaluate(trial)
                     collected.append(cand)
                     if _ranked([cand, best])[0] is cand and cand is not best:

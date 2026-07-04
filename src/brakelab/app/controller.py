@@ -49,6 +49,12 @@ class ProjectController(QObject):
         set_by_path(self._config, path, value)
         self.recompute()
 
+    def apply_values(self, values: dict[str, float]) -> None:
+        """Update several config fields at once (e.g. from a catalog part) and recompute once."""
+        for path, value in values.items():
+            set_by_path(self._config, path, value)
+        self.recompute()
+
     def replace_config(self, config: VehicleConfig) -> None:
         self._config = config
         self.configReplaced.emit(config)

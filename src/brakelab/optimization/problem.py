@@ -31,6 +31,11 @@ class Variable:
     minimum: float
     maximum: float
     enabled: bool = True
+    choices: list[float] | None = None  # if set, a DISCRETE variable (e.g. real catalog bore sizes)
+
+    @property
+    def discrete(self) -> bool:
+        return bool(self.choices)
 
 
 @dataclass

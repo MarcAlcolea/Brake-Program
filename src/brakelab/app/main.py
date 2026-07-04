@@ -34,6 +34,7 @@ from ..persistence import ConfigLibrary
 from . import theme
 from .controller import ProjectController
 from .panels.compare_tab import CompareTab
+from .panels.components_panel import ComponentsPanel
 from .panels.config_bar import ConfigBar
 from .panels.input_panel import InputPanel
 from .panels.optimization_tab import OptimizationTab
@@ -75,9 +76,14 @@ class MainWindow(QMainWindow):
             self._optimize.refresh_current()
 
     def _build_design_tab(self) -> QWidget:
+        left = QWidget()
+        left_layout = QVBoxLayout(left)
+        left_layout.setContentsMargins(0, 0, 0, 0)
+        left_layout.addWidget(ComponentsPanel(self.controller))
+        left_layout.addWidget(InputPanel(self.controller, self._details.show_details))
         inputs = QScrollArea()
         inputs.setWidgetResizable(True)
-        inputs.setWidget(InputPanel(self.controller, self._details.show_details))
+        inputs.setWidget(left)
         inputs.setMinimumWidth(420)
 
         right = QSplitter(Qt.Vertical)

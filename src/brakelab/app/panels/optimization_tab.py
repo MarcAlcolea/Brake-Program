@@ -35,6 +35,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from ...components import catalog
 from ...core.attrpath import get_by_path
 from ...core.engine import BrakeEngine
 from ...optimization import (
@@ -57,14 +58,17 @@ from ...optimization.report import build_optimization_report
 from ...persistence import ConfigLibrary
 from ..controller import ProjectController
 
-# Design variables the optimizer may tune: (path, label, unit, min, max, enabled-by-default)
+# Design variables the optimizer may tune: (path, label, unit, min, max, enabled, catalog-kind)
+# catalog-kind "mc" means the row can be searched over real master-cylinder bore options.
 _VARIABLES = [
-    ("hydraulics.mc_bore_front", "Master Cylinder Bore (Front)", "mm", 12.0, 25.4, True),
-    ("hydraulics.mc_bore_rear", "Master Cylinder Bore (Rear)", "mm", 12.0, 25.4, True),
-    ("pedal_box.pedal_ratio", "Pedal Ratio", "-", 3.5, 7.0, True),
-    ("pedal_box.balance_bias_front", "Balance Bar Bias (Front)", "-", 0.35, 0.65, True),
-    ("rotor.effective_radius", "Effective Rotor Radius", "m", 0.06, 0.12, False),
+    ("hydraulics.mc_bore_front", "Master Cylinder Bore (Front)", "mm", 12.0, 25.4, True, "mc"),
+    ("hydraulics.mc_bore_rear", "Master Cylinder Bore (Rear)", "mm", 12.0, 25.4, True, "mc"),
+    ("pedal_box.pedal_ratio", "Pedal Ratio", "-", 3.5, 7.0, True, None),
+    ("pedal_box.balance_bias_front", "Balance Bar Bias (Front)", "-", 0.35, 0.65, True, None),
+    ("rotor.effective_radius", "Effective Rotor Radius", "m", 0.06, 0.12, False, None),
 ]
+_RANGE = "Range (continuous)"
+_ALL_MC = "All master cylinders"
 _DEFAULT_CONSTRAINTS = {"brake_bias_front", "lockup_order", "pedal_travel", "mc_stroke_headroom"}
 
 
@@ -142,10 +146,10 @@ class OptimizationTab(QWidget):
     # ---- 1. Variables -----------------------------------------------------------------------
     def _build_variables(self) -> None:
         lay = self._section("1. Variables — what the optimizer may change")
-        self._var_table = self._table(["Optimize", "Variable", "Unit", "Min", "Max", "Current"])
+        self._var_table = self._table(["Optimize", "Variable", "Unit", "Min", "Max", "Search over", "Current"])
         self._var_rows = []
         self._var_table.setRowCount(len(_VARIABLES))
-        for row, (path, label, unit, lo, hi, on) in enumerate(_VARIABLES):
+        for row, (path, label, unit, lo, hi, on, kind) in enumerate(_VARIABLES):
             check = QCheckBox()
             check.setChecked(on)
             self._var_table.setCellWidget(row, 0, _wrap(check))
@@ -154,9 +158,25 @@ class OptimizationTab(QWidget):
             mn, mx = self._edit(f"{lo:g}"), self._edit(f"{hi:g}")
             self._var_table.setCellWidget(row, 3, mn)
             self._var_table.setCellWidget(row, 4, mx)
+
+            source = None
+            if kind == "mc":
+                source = QComboBox()
+                source.addItems([_RANGE] + catalog.master_cylinder_series() + [_ALL_MC])
+                source.setMaxVisibleItems(8)
+                source.setCurrentIndex(1)  # default: search over the first real MC series
+                _bold_off(source)
+                source.currentTextChanged.connect(lambda t, a=mn, b=mx: (a.setEnabled(t == _RANGE), b.setEnabled(t == _RANGE)))
+                mn.setEnabled(False)
+                mx.setEnabled(False)
+                self._var_table.setCellWidget(row, 5, source)
+            else:
+                self._var_table.setItem(row, 5, _cell(_RANGE))
+
             cur = _cell("", right=True)
-            self._var_table.setItem(row, 5, cur)
-            self._var_rows.append({"path": path, "label": label, "unit": unit, "check": check, "min": mn, "max": mx, "cur": cur})
+            self._var_table.setItem(row, 6, cur)
+            self._var_rows.append({"path": path, "label": label, "unit": unit, "check": check,
+                                   "min": mn, "max": mx, "source": source, "cur": cur})
         _fit(self._var_table)
         lay.addWidget(self._var_table)
 
@@ -331,11 +351,16 @@ class OptimizationTab(QWidget):
         for r in self._var_rows:
             if not r["check"].isChecked():
                 continue
-            lo, hi = _num(r["min"], 0), _num(r["max"], 0)
-            if hi <= lo:
-                QMessageBox.warning(self, "Optimization", f"Max must exceed Min for {r['label']}.")
-                return None
-            variables.append(Variable(r["path"], r["label"], r["unit"], lo, hi))
+            source = r["source"].currentText() if r["source"] is not None else _RANGE
+            if source != _RANGE:
+                choices = catalog.all_mc_bores() if source == _ALL_MC else catalog.bores_for_series(source)
+                variables.append(Variable(r["path"], r["label"], r["unit"], min(choices), max(choices), choices=choices))
+            else:
+                lo, hi = _num(r["min"], 0), _num(r["max"], 0)
+                if hi <= lo:
+                    QMessageBox.warning(self, "Optimization", f"Max must exceed Min for {r['label']}.")
+                    return None
+                variables.append(Variable(r["path"], r["label"], r["unit"], lo, hi))
         if not variables:
             QMessageBox.information(self, "Optimization", "Enable at least one variable.")
             return None
