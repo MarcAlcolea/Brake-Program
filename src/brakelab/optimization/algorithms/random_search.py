@@ -74,7 +74,7 @@ class RandomSearchOptimizer(Optimizer):
                 if step < 1e-4:
                     break
 
-        # Rank all, de-duplicate near-identical designs, return the requested number of alternatives.
+        # Rank all and de-duplicate near-identical designs.
         ranked = _ranked(collected)
         unique: list[Evaluation] = []
         seen: set[tuple] = set()
@@ -83,6 +83,9 @@ class RandomSearchOptimizer(Optimizer):
             if key not in seen:
                 seen.add(key)
                 unique.append(e)
-            if len(unique) >= max(1, problem.settings.alternatives):
-                break
-        return unique
+
+        # Constraints are hard: only return designs that actually satisfy them. If none do, return the
+        # closest few so the UI can show how far off they are (with a "no feasible design" message).
+        n = max(1, problem.settings.alternatives)
+        feasible = [e for e in unique if e.feasible]
+        return feasible[:n] if feasible else unique[:n]

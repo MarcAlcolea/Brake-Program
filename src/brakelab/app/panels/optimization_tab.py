@@ -55,20 +55,33 @@ from ...persistence import ConfigLibrary
 from .. import theme
 from ..controller import ProjectController
 from ..uikit import fit_table, plain_table, style_combo
-from ..widgets import CollapsibleSection
+from ..widgets import CollapsibleSection, InfoButton
 
+# (path, label, unit, min, max, on-by-default, kind, note)
 _VARIABLES = [
-    ("hydraulics.mc_bore_front", "Master Cylinder Bore (Front)", "mm", 12.0, 25.4, True, "mc"),
-    ("hydraulics.mc_bore_rear", "Master Cylinder Bore (Rear)", "mm", 12.0, 25.4, True, "mc"),
-    ("pedal_box.pedal_ratio", "Pedal Ratio", "-", 3.5, 7.0, True, None),
-    ("pedal_box.balance_bias_front", "Balance Bar Bias (Front)", "-", 0.35, 0.65, True, None),
-    ("rotor.effective_radius", "Effective Rotor Radius", "m", 0.06, 0.12, False, None),
+    ("hydraulics.mc_bore_front", "Master Cylinder Bore (Front)", "mm", 12.0, 25.4, True, "mc",
+     "Front master-cylinder bore. A smaller bore raises front line pressure (more front braking). "
+     "Use 'Search over' to draw from real catalog bores; Min/Max limit which bores are tried."),
+    ("hydraulics.mc_bore_rear", "Master Cylinder Bore (Rear)", "mm", 12.0, 25.4, True, "mc",
+     "Rear master-cylinder bore. A LARGER bore lowers rear line pressure (less rear braking) — the "
+     "usual way to stop the rear locking. Min/Max limit which catalog bores are tried."),
+    ("pedal_box.pedal_ratio", "Pedal Ratio", "-", 3.5, 7.0, True, None,
+     "Pedal lever ratio. Higher multiplies the driver's force more (less effort) but adds pedal travel."),
+    ("pedal_box.balance_bias_front", "Balance Bar Bias (Front)", "-", 0.35, 0.65, True, None,
+     "Fraction of pedal force sent to the front master cylinder (0.35–0.65 hardware limit). More "
+     "front bias = more front braking, less rear."),
+    ("rotor.effective_radius", "Effective Rotor Radius", "m", 0.06, 0.12, False, None,
+     "Distance from the hub centre to the pad centre. A larger radius gives more brake torque per "
+     "unit clamp force."),
 ]
 _RANGE = "Range (continuous)"
 _ALL_MC = "All master cylinders"
-# On by default. Front-before-rear (lockup_order) is available but off by default, since with a
-# rear-unloaded car and discrete catalog bores it is often infeasible — enable it deliberately.
-_DEFAULT_CONSTRAINTS = {"brake_bias_front", "pedal_travel", "mc_stroke_headroom"}
+# On by default. "rear_grip_use" (rear does not lock) is included so an out-of-the-box run targets the
+# common problem of a locking rear. The pedal-travel window is OFF by default: keeping the rear from
+# locking usually needs a larger rear bore, which shortens pedal travel below 30 mm — a real conflict —
+# so it is left for the user to add back deliberately. Front-before-rear (lockup_stability) is also off
+# by default, as it is often infeasible against the balance-bar limit.
+_DEFAULT_CONSTRAINTS = {"brake_bias_front", "mc_stroke_headroom", "rear_grip_use"}
 
 from ...optimization.metrics import CONSTRAINT_DEFAULTS  # noqa: E402
 
@@ -145,10 +158,11 @@ class OptimizationTab(QWidget):
 
     # ---- 1. Variables -----------------------------------------------------------------------
     def _variables(self) -> QWidget:
-        table = plain_table(["Optimize", "Variable", "Unit", "Min", "Max", "Search over", "Current"], stretch_col=1)
+        table = plain_table(["Optimize", "Variable", "Unit", "Min", "Max", "Search over", "Current", ""],
+                            stretch_col=1)
         self._var_rows = []
         table.setRowCount(len(_VARIABLES))
-        for row, (path, label, unit, lo, hi, on, kind) in enumerate(_VARIABLES):
+        for row, (path, label, unit, lo, hi, on, kind, note) in enumerate(_VARIABLES):
             check = QCheckBox()
             check.setChecked(on)
             table.setCellWidget(row, 0, _wrap(check))
@@ -164,14 +178,13 @@ class OptimizationTab(QWidget):
                 source.setCurrentIndex(1)
                 source.setMaxVisibleItems(8)
                 style_combo(source)
-                source.currentTextChanged.connect(lambda t, a=mn, b=mx: (a.setEnabled(t == _RANGE), b.setEnabled(t == _RANGE)))
-                mn.setEnabled(False)
-                mx.setEnabled(False)
                 table.setCellWidget(row, 5, source)
+                # Min/Max stay enabled: for a catalog series they limit which bores are tried.
             else:
                 table.setItem(row, 5, _cell(_RANGE))
             cur = _cell("", right=True)
             table.setItem(row, 6, cur)
+            table.setCellWidget(row, 7, _wrap(InfoButton(label, note)))
             self._var_rows.append({"path": path, "label": label, "unit": unit, "check": check,
                                    "min": mn, "max": mx, "source": source, "cur": cur})
         fit_table(table)
@@ -179,7 +192,7 @@ class OptimizationTab(QWidget):
 
     # ---- 2. Objectives ----------------------------------------------------------------------
     def _objectives(self) -> QWidget:
-        table = plain_table(["Use", "Objective", "Unit", "Goal", "Target", "Weight"], stretch_col=1)
+        table = plain_table(["Use", "Objective", "Unit", "Goal", "Target", "Weight", ""], stretch_col=1)
         self._obj_rows = []
         table.setRowCount(len(OBJECTIVE_KEYS))
         for row, key in enumerate(OBJECTIVE_KEYS):
@@ -198,13 +211,14 @@ class OptimizationTab(QWidget):
             weight = _edit("1", 52)
             table.setCellWidget(row, 4, target)
             table.setCellWidget(row, 5, weight)
+            table.setCellWidget(row, 6, _wrap(InfoButton(m.label, m.note or m.label)))
             self._obj_rows.append({"key": key, "check": check, "goal": goal, "target": target, "weight": weight})
         fit_table(table)
         return table
 
     # ---- 3. Constraints ---------------------------------------------------------------------
     def _constraints(self) -> QWidget:
-        table = plain_table(["Use", "Constraint", "Limit", "Note"], stretch_col=1)
+        table = plain_table(["Use", "Constraint", "Limit", ""], stretch_col=1)
         self._con_rows = []
         table.setRowCount(len(CONSTRAINT_DEFAULTS))
         for row, (key, op, lo, hi) in enumerate(CONSTRAINT_DEFAULTS):
@@ -213,7 +227,8 @@ class OptimizationTab(QWidget):
             check.setChecked(m.available and key in _DEFAULT_CONSTRAINTS)
             check.setEnabled(m.available)
             table.setCellWidget(row, 0, _wrap(check))
-            table.setItem(row, 1, _cell(m.label))
+            # Keep the "unavailable" hint inline (short); the full explanation lives in the ⓘ.
+            table.setItem(row, 1, _cell(m.label + ("" if m.available else "  (unavailable)")))
             limit = QWidget()
             hl = QHBoxLayout(limit)
             hl.setContentsMargins(4, 0, 4, 0)
@@ -234,7 +249,8 @@ class OptimizationTab(QWidget):
             hl.addWidget(QLabel("" if m.unit in ("", "-") else m.unit))
             hl.addStretch(1)
             table.setCellWidget(row, 2, limit)
-            table.setItem(row, 3, _cell("" if m.available else "unavailable — " + m.note))
+            note = m.note if m.available else f"Unavailable — {m.note}"
+            table.setCellWidget(row, 3, _wrap(InfoButton(m.label, note or m.label)))
             self._con_rows.append({"key": key, "op": op, "check": check, "lo": lo_edit, "hi": hi_edit})
         fit_table(table)
         return table
@@ -343,14 +359,21 @@ class OptimizationTab(QWidget):
             if not r["check"].isChecked():
                 continue
             source = r["source"].currentText() if r["source"] is not None else _RANGE
+            lo, hi = _num(r["min"], 0), _num(r["max"], 0)
+            if hi <= lo:
+                QMessageBox.warning(self, "Optimization", f"Max must exceed Min for {r['label']}.")
+                return None
             if source != _RANGE:
-                choices = catalog.all_mc_bores() if source == _ALL_MC else catalog.bores_for_series(source)
+                # Discrete catalog bores, limited to the Min/Max window the user set.
+                all_bores = catalog.all_mc_bores() if source == _ALL_MC else catalog.bores_for_series(source)
+                choices = [b for b in all_bores if lo <= b <= hi]
+                if not choices:
+                    QMessageBox.warning(self, "Optimization",
+                                        f"No {source} bores between {lo:g} and {hi:g} mm for {r['label']}. "
+                                        "Widen the Min/Max, or use 'Range (continuous)'.")
+                    return None
                 variables.append(Variable(r["path"], r["label"], r["unit"], min(choices), max(choices), choices=choices))
             else:
-                lo, hi = _num(r["min"], 0), _num(r["max"], 0)
-                if hi <= lo:
-                    QMessageBox.warning(self, "Optimization", f"Max must exceed Min for {r['label']}.")
-                    return None
                 variables.append(Variable(r["path"], r["label"], r["unit"], lo, hi))
         if not variables:
             QMessageBox.information(self, "Optimization", "Enable at least one variable.")
@@ -441,13 +464,15 @@ class OptimizationTab(QWidget):
         rel_sel = [(s / c) if abs(c) > 1e-9 else 0.0 for s, c in zip(sel, cur)]
         fg = "#e8e8e8" if theme.is_dark() else "#1a1a1a"
         bg = "#161616" if theme.is_dark() else "#ffffff"
+        cur_color = "#666666" if theme.is_dark() else "#c0c0c0"   # "Current" — light grey
+        sel_color = "#e0e0e0" if theme.is_dark() else "#333333"   # "Selected" — dark grey
         self._figure.clear()
         self._figure.set_facecolor(bg)
         ax = self._figure.add_subplot(111)
         ax.set_facecolor(bg)
         x = range(len(keys))
-        ax.bar([i - 0.2 for i in x], [1.0] * len(keys), width=0.4, label="Current", color="#9aa7bd")
-        ax.bar([i + 0.2 for i in x], rel_sel, width=0.4, label="Selected", color="#4a80c8")
+        ax.bar([i - 0.2 for i in x], [1.0] * len(keys), width=0.4, label="Current", color=cur_color)
+        ax.bar([i + 0.2 for i in x], rel_sel, width=0.4, label="Selected", color=sel_color)
         ax.set_xticks(list(x))
         ax.set_xticklabels(labels, rotation=20, ha="right", fontsize=7, color=fg)
         ax.tick_params(colors=fg)
