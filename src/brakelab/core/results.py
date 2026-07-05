@@ -72,6 +72,20 @@ class PedalTravelResult:
 
 
 @dataclass(frozen=True)
+class ThermalResult:
+    """Brake-rotor thermal quantities that seed an ANSYS transient thermal study."""
+
+    braking_energy: float           # J — kinetic energy shed in one braking event
+    braking_power: float            # W — energy / braking time
+    power_front_rotor: float        # W — power into ONE front rotor
+    power_rear_rotor: float         # W — power into ONE rear rotor
+    heat_flux_front: float          # W/m² — peak heat flux on a front rotor face
+    heat_flux_rear: float           # W/m² — peak heat flux on a rear rotor face
+    film_coeff_start: float         # W/m²·K — convection coefficient at the start of braking (v_i)
+    film_coeff_end: float           # W/m²·K — convection coefficient at the end of braking (v_f)
+
+
+@dataclass(frozen=True)
 class ValidationMessage:
     level: str                      # "error" | "warning" | "info"
     message: str
@@ -100,6 +114,7 @@ class BrakeResults:
     sizing: SizingResult
     hydraulics: HydraulicsResult
     pedal_travel: PedalTravelResult
+    thermal: ThermalResult
     requirements: tuple[Requirement, ...] = field(default_factory=tuple)
     messages: tuple[ValidationMessage, ...] = field(default_factory=tuple)
 

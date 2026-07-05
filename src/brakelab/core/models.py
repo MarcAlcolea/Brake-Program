@@ -123,6 +123,32 @@ class PedalBox:
 
 
 @dataclass
+class Thermal:
+    """Inputs for the brake-rotor thermal (ANSYS boundary-condition) calculations.
+
+    These feed the heat-flux and film-coefficient values a student types into an ANSYS transient
+    thermal study; they reproduce ``reference/Brake Rotors Simulations 2026.docx``. This tool does
+    not replace the ANSYS run — it produces the numbers the run needs.
+
+    Deliberately, mass, brake bias and rotor counts are NOT stored here: the thermal math reads them
+    from the shared :class:`MassProperties` / :class:`PedalBox` / :class:`Axle` so the mechanical and
+    thermal models can never disagree. In particular the per-axle rotor count divides the axle's
+    energy, so a single inboard rear rotor absorbs the full rear energy (audit **T2**).
+    """
+
+    v_initial: float = 28.0          # m/s — speed at the start of the braking event (v_i)
+    v_final: float = 10.0            # m/s — speed at the end of the braking event (v_f)
+    brake_time: float = 3.0          # s — duration of the braking event (heat-flux load step)
+    cool_time: float = 12.0          # s — following non-braking/cooling time (ANSYS step 2)
+    swept_area: float = 0.02343522   # m² — pad friction-ring area on the rotor, counting BOTH faces
+    rotor_heat_fraction: float = 1.0  # — fraction of braking energy into the rotor (audit **T3**;
+    #                                    1.0 reproduces the doc, ~0.85–0.90 is physically typical)
+    ambient_temp: float = 22.0       # °C — ambient air and initial rotor temperature
+    film_intercept: float = 10.0     # W/m²·K — a in the estimate h = a + b·v
+    film_slope: float = 3.0          # (W/m²·K)/(m/s) — b in the estimate h = a + b·v
+
+
+@dataclass
 class VehicleConfig:
     """Complete brake-system configuration for one vehicle."""
 
@@ -138,3 +164,4 @@ class VehicleConfig:
     pedal_box: PedalBox
     target_decel_g: float           # — design deceleration target [g]
     notes: str = ""
+    thermal: Thermal = field(default_factory=Thermal)

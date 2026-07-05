@@ -20,6 +20,7 @@ from ..core.models import (
     Pad,
     PedalBox,
     Rotor,
+    Thermal,
     Tires,
     VehicleConfig,
 )
@@ -50,6 +51,7 @@ def config_from_dict(data: dict[str, Any]) -> VehicleConfig:
         pedal_box=PedalBox(**data["pedal_box"]),
         target_decel_g=data["target_decel_g"],
         notes=data.get("notes", ""),
+        thermal=Thermal(**data.get("thermal", {})),
     )
 
 
