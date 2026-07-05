@@ -50,26 +50,42 @@ def evaluate_requirements(
         )
     )
 
-    max_stroke = config.hydraulics.max_mc_stroke
+    # Master-cylinder stroke, checked in three tiers against the effective stroke actually consumed
+    # (theoretical stroke + compliance). Operational is a target we want to stay under; the hard-stop
+    # and absolute mechanical limits are failures.
+    hyd = config.hydraulics
+    effective = p.effective_stroke
     reqs.append(
         Requirement(
-            name="Front master cylinder stroke fits",
-            description="The required front master-cylinder stroke must fit within the maximum "
-            "available stroke of the cylinder.",
-            requirement_text=f"at most {max_stroke:,.2f} mm of stroke",
-            current_text=f"{p.mc_stroke_front:,.2f} mm needed",
-            passed=p.mc_stroke_front <= max_stroke,
+            name="MC stroke within operational limit",
+            description="In normal operation the effective master-cylinder stroke should stay within "
+            "the operational limit, set as a fraction (a healthy 20-40%) of the mechanical limit. "
+            "Exceeding it is a target miss, not a failure.",
+            requirement_text=f"at most {hyd.max_operational_stroke:,.2f} mm of stroke",
+            current_text=f"{effective:,.2f} mm used",
+            passed=effective <= hyd.max_operational_stroke,
+            hard=False,
+        )
+    )
+    reqs.append(
+        Requirement(
+            name="MC stroke within hard-stop limit",
+            description="The effective master-cylinder stroke must stay below the hard-stop / failure "
+            "stroke, set as a fraction (typically 50%) of the mechanical limit.",
+            requirement_text=f"at most {hyd.hardstop_stroke:,.2f} mm of stroke",
+            current_text=f"{effective:,.2f} mm used",
+            passed=effective <= hyd.hardstop_stroke,
             hard=True,
         )
     )
     reqs.append(
         Requirement(
-            name="Rear master cylinder stroke fits",
-            description="The required rear master-cylinder stroke must fit within the maximum "
-            "available stroke of the cylinder.",
-            requirement_text=f"at most {max_stroke:,.2f} mm of stroke",
-            current_text=f"{p.mc_stroke_rear:,.2f} mm needed",
-            passed=p.mc_stroke_rear <= max_stroke,
+            name="MC stroke within mechanical limit",
+            description="The effective master-cylinder stroke must fit within the master cylinder's "
+            "absolute mechanical stroke limit.",
+            requirement_text=f"at most {hyd.max_mc_stroke:,.2f} mm of stroke",
+            current_text=f"{effective:,.2f} mm used",
+            passed=effective <= hyd.max_mc_stroke,
             hard=True,
         )
     )

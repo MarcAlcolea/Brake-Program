@@ -25,6 +25,12 @@ from dataclasses import dataclass, field
 
 from . import units
 
+#: Master-cylinder stroke guideline fractions (fixed engineering facts, not user inputs). The
+#: operational limit is the upper end of the healthy 20–40% operating window; the hard-stop / failure
+#: limit is 50% of the mechanical stroke.
+OPERATIONAL_STROKE_FRACTION = 0.40
+HARDSTOP_STROKE_FRACTION = 0.50
+
 
 @dataclass
 class MassProperties:
@@ -93,7 +99,7 @@ class Hydraulics:
 
     mc_bore_front: float            # mm — front master-cylinder bore diameter
     mc_bore_rear: float             # mm — rear master-cylinder bore diameter
-    max_mc_stroke: float = 27.94    # mm — maximum available MC stroke (e.g. Tilton 76/78 = 1.1")
+    max_mc_stroke: float = 27.94    # mm — absolute mechanical stroke limit (e.g. Tilton 76/78 = 1.1")
 
     @property
     def mc_area_front(self) -> float:
@@ -104,6 +110,19 @@ class Hydraulics:
     def mc_area_rear(self) -> float:
         """Rear master-cylinder bore area [mm²]."""
         return units.circle_area_mm2(self.mc_bore_rear)
+
+    @property
+    def max_operational_stroke(self) -> float:
+        """Largest stroke we want to use in normal operation [mm].
+
+        A fixed fraction of the mechanical limit (the upper end of the healthy 20–40% window), not a
+        user input — see :data:`OPERATIONAL_STROKE_FRACTION`."""
+        return OPERATIONAL_STROKE_FRACTION * self.max_mc_stroke
+
+    @property
+    def hardstop_stroke(self) -> float:
+        """Stroke at which a hard stop / failure condition is reached [mm] (50% of the mechanical limit)."""
+        return HARDSTOP_STROKE_FRACTION * self.max_mc_stroke
 
 
 @dataclass

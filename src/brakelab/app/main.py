@@ -16,6 +16,7 @@ from PySide6.QtWidgets import (
     QApplication,
     QFrame,
     QHBoxLayout,
+    QLabel,
     QMainWindow,
     QPushButton,
     QScrollArea,
@@ -32,6 +33,7 @@ from .controller import ProjectController
 from .panels.compare_tab import CompareTab
 from .panels.components_panel import ComponentsPanel
 from .panels.config_bar import ConfigBar
+from .panels.forward_panel import ForwardStatusPanel
 from .panels.input_panel import InputPanel
 from .panels.optimization_tab import OptimizationTab
 from .panels.outputs_panel import OutputsPanel
@@ -40,9 +42,9 @@ from .panels.requirements_panel import RequirementsPanel
 from .panels.shared_info_panel import SharedInfoPanel
 from .plots.plot_panel import SensitivityPanel
 from .widgets import ClickableLabel
-from . import thermal_spec
+from . import forward_spec, thermal_spec
 
-_PAGES = ["Main", "Thermal", "Optimize", "Compare", "Sensitivity", "Report"]
+_PAGES = ["Main", "Simulator", "Thermal", "Optimize", "Compare", "Sensitivity", "Report"]
 
 
 class MainWindow(QMainWindow):
@@ -58,12 +60,26 @@ class MainWindow(QMainWindow):
         self._report = ReportTab(self.controller, library, optimization_result=lambda: self._optimize.latest_result)
 
         self._stack = QStackedWidget()
-        self._stack.addWidget(self._design_page())
-        self._stack.addWidget(self._thermal_page())
-        self._stack.addWidget(self._optimize)
-        self._stack.addWidget(self._compare)
-        self._stack.addWidget(SensitivityPanel(self.controller))
-        self._stack.addWidget(self._report)
+        self._stack.addWidget(self._framed(
+            "Design the brake system — choose components and check the pedal force and sizing needed "
+            "to hit a target deceleration.", self._design_page()))
+        self._stack.addWidget(self._framed(
+            "Simulate real braking — from a driver pedal force, see the actual deceleration and "
+            "whether either axle locks up.", self._simulator_page()))
+        self._stack.addWidget(self._framed(
+            "Rotor thermal inputs — compute the heat-flux and film-coefficient values for an ANSYS "
+            "transient thermal study.", self._thermal_page()))
+        self._stack.addWidget(self._framed(
+            "Optimize the setup — search component and tuning values that best meet your objectives "
+            "and constraints.", self._optimize))
+        self._stack.addWidget(self._framed(
+            "Compare setups — line up saved configurations side by side to see how they differ.",
+            self._compare))
+        self._stack.addWidget(self._framed(
+            "Sensitivity — see which inputs most affect a chosen output, so you know what to tune.",
+            SensitivityPanel(self.controller)))
+        self._stack.addWidget(self._framed(
+            "Report — build a customised PDF engineering report of the design.", self._report))
 
         central = QWidget()
         row = QHBoxLayout(central)
@@ -80,6 +96,7 @@ class MainWindow(QMainWindow):
         self.controller.configReplaced.connect(lambda c: self._set_title(c.name))
         self._set_title(controller.config.name)
         self._select_page(0)
+        theme.style_checkboxes(self)  # visible tick boxes, per-widget (no app stylesheet — see theme)
 
     # ---- sidebar ----------------------------------------------------------------------------
     def _sidebar(self) -> QWidget:
@@ -108,15 +125,30 @@ class MainWindow(QMainWindow):
         v.addWidget(export)
         return panel
 
+    def _framed(self, description: str, widget: QWidget) -> QWidget:
+        """Wrap a page with a small muted one-line description of the tab's purpose at the top."""
+        holder = QWidget()
+        v = QVBoxLayout(holder)
+        v.setContentsMargins(10, 8, 10, 0)
+        v.setSpacing(3)
+        label = QLabel(description)
+        label.setWordWrap(True)
+        label.setStyleSheet(f"color: {theme.muted_text()};")
+        v.addWidget(label)
+        v.addWidget(widget, 1)
+        return holder
+
     def _select_page(self, index: int) -> None:
         for j, label in enumerate(self._nav_labels):
             label.setFont(theme.heading_font(14, bold=(j == index)))
         self._stack.setCurrentIndex(index)
-        if self._stack.currentWidget() is self._compare:
+        # Pages are wrapped in a description frame, so refresh by page name rather than widget identity.
+        name = _PAGES[index]
+        if name == "Compare":
             self._compare.reload_configs()
-        elif self._stack.currentWidget() is self._optimize:
+        elif name == "Optimize":
             self._optimize.refresh_current()
-        elif self._stack.currentWidget() is self._report:
+        elif name == "Report":
             self._report.reload()
 
     # ---- design page ------------------------------------------------------------------------
@@ -135,6 +167,42 @@ class MainWindow(QMainWindow):
         rv.setContentsMargins(4, 4, 4, 4)
         rv.addWidget(RequirementsPanel(self.controller))
         rv.addWidget(self._outputs)
+        rv.addStretch(1)
+        right_scroll = _scroll(right)
+
+        splitter = QSplitter(Qt.Horizontal)
+        splitter.addWidget(left_scroll)
+        splitter.addWidget(right_scroll)
+        splitter.setStretchFactor(0, 0)
+        splitter.setStretchFactor(1, 1)
+
+        page = QWidget()
+        v = QVBoxLayout(page)
+        v.setContentsMargins(6, 6, 6, 2)
+        v.addWidget(ConfigBar(self.controller, self.library))
+        v.addWidget(splitter, 1)
+        return page
+
+    # ---- simulator page ---------------------------------------------------------------------
+    def _simulator_page(self) -> QWidget:
+        """Forward performance / lock-up simulator. Same layout as Main (components + inputs left,
+        status + outputs right), sharing the one config so tuning here also updates the Main tab."""
+        left = QWidget()
+        lv = QVBoxLayout(left)
+        lv.setContentsMargins(4, 4, 4, 4)
+        lv.addWidget(ComponentsPanel(self.controller))
+        lv.addWidget(InputPanel(self.controller, groups=forward_spec.INPUT_GROUPS))
+        lv.addStretch(1)
+        left_scroll = _scroll(left)
+        left_scroll.setMinimumWidth(430)
+
+        self._forward_status = ForwardStatusPanel(self.controller)
+        self._forward_outputs = OutputsPanel(self.controller, groups=forward_spec.OUTPUT_GROUPS)
+        right = QWidget()
+        rv = QVBoxLayout(right)
+        rv.setContentsMargins(4, 4, 4, 4)
+        rv.addWidget(self._forward_status)
+        rv.addWidget(self._forward_outputs)
         rv.addStretch(1)
         right_scroll = _scroll(right)
 
@@ -196,6 +264,8 @@ class MainWindow(QMainWindow):
             self._update_theme_button()
             self._outputs.reset_highlights()
             self._thermal_outputs.reset_highlights()
+            self._forward_outputs.reset_highlights()
+            theme.style_checkboxes(self)  # re-apply the theme-aware indicator fill
 
     def _set_title(self, name: str) -> None:
         self.setWindowTitle(f"BrakeLab — {name}")

@@ -8,7 +8,7 @@ saved cars keep loading as the model evolves.
 from __future__ import annotations
 
 import json
-from dataclasses import asdict
+from dataclasses import asdict, fields
 from pathlib import Path
 from typing import Any
 
@@ -35,23 +35,30 @@ def config_to_dict(config: VehicleConfig) -> dict[str, Any]:
     return data
 
 
+def _kw(cls, values: dict[str, Any]) -> dict[str, Any]:
+    """Keep only the keys that are fields of ``cls``, so configs saved by an older/newer schema
+    (with fields since removed) still load instead of raising ``TypeError``."""
+    allowed = {f.name for f in fields(cls)}
+    return {k: v for k, v in values.items() if k in allowed}
+
+
 def config_from_dict(data: dict[str, Any]) -> VehicleConfig:
     """Reconstruct a config from a dict, applying migrations for older schema versions."""
     data = _migrate(dict(data))
     return VehicleConfig(
         name=data["name"],
-        mass=MassProperties(**data["mass"]),
-        tires=Tires(**data["tires"]),
-        front_axle=Axle(**data["front_axle"]),
-        rear_axle=Axle(**data["rear_axle"]),
-        rotor=Rotor(**data["rotor"]),
-        pad=Pad(**data["pad"]),
-        caliper=Caliper(**data["caliper"]),
-        hydraulics=Hydraulics(**data["hydraulics"]),
-        pedal_box=PedalBox(**data["pedal_box"]),
+        mass=MassProperties(**_kw(MassProperties, data["mass"])),
+        tires=Tires(**_kw(Tires, data["tires"])),
+        front_axle=Axle(**_kw(Axle, data["front_axle"])),
+        rear_axle=Axle(**_kw(Axle, data["rear_axle"])),
+        rotor=Rotor(**_kw(Rotor, data["rotor"])),
+        pad=Pad(**_kw(Pad, data["pad"])),
+        caliper=Caliper(**_kw(Caliper, data["caliper"])),
+        hydraulics=Hydraulics(**_kw(Hydraulics, data["hydraulics"])),
+        pedal_box=PedalBox(**_kw(PedalBox, data["pedal_box"])),
         target_decel_g=data["target_decel_g"],
         notes=data.get("notes", ""),
-        thermal=Thermal(**data.get("thermal", {})),
+        thermal=Thermal(**_kw(Thermal, data.get("thermal", {}))),
         assumed_inputs=list(data.get("assumed_inputs", [])),
     )
 

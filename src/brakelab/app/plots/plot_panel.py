@@ -10,9 +10,13 @@ from __future__ import annotations
 
 import copy
 
+import matplotlib
 from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg
 from matplotlib.figure import Figure
 from PySide6.QtWidgets import QComboBox, QHBoxLayout, QLabel, QVBoxLayout, QWidget
+
+# Match the app's Helvetica typography in the charts too (falls back gracefully if unavailable).
+matplotlib.rcParams["font.family"] = ["Helvetica", "Helvetica Neue", "Arial", "DejaVu Sans"]
 
 from ...core.attrpath import get_by_path, set_by_path
 from ...core.engine import BrakeEngine
@@ -49,11 +53,8 @@ class SensitivityPanel(QWidget):
         layout = QVBoxLayout(self)
         layout.setContentsMargins(8, 8, 8, 8)
 
-        title = QLabel("Sensitivity analysis")
-        title.setFont(theme.heading_font(15))
-        layout.addWidget(title)
-        hint = QLabel("Which inputs most affect a chosen output. Longer bars = focus there to move "
-                      "this number; bars to the right raise it, to the left lower it.")
+        hint = QLabel("Longer bars = focus there to move this number; bars to the right raise it, to "
+                      "the left lower it.")
         hint.setWordWrap(True)
         hint.setStyleSheet(f"color: {theme.muted_text()};")
         layout.addWidget(hint)
@@ -122,7 +123,7 @@ class SensitivityPanel(QWidget):
 
         fg = "#e8e8e8" if theme.is_dark() else "#1a1a1a"
         bg = "#161616" if theme.is_dark() else "#ffffff"
-        bar = "#8a8a8a" if theme.is_dark() else "#555555"
+        bar = "#b0b0b0" if theme.is_dark() else "#333333"
         self._figure.clear()
         self._figure.set_facecolor(bg)
         ax = self._figure.add_subplot(111)

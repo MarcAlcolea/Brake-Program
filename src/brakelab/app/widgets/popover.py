@@ -30,25 +30,35 @@ def show_popover(global_pos: QPoint, title: str, text: str, anchor: QWidget | No
 
     frame = QFrame(None, Qt.Popup | Qt.FramelessWindowHint)
     frame.setAttribute(Qt.WA_DeleteOnClose)
+    frame.setObjectName("popoverCard")
+    # Scope to the frame by object name: a plain ``QFrame`` selector would also match the QLabels
+    # inside (QLabel is a QFrame subclass), boxing each of them.
     frame.setStyleSheet(
-        f"QFrame {{ background: {theme.card_bg()}; border: 1px solid {theme.border_color()};"
-        f" border-radius: 8px; }}"
+        f"QFrame#popoverCard {{ background: {theme.card_bg()};"
+        f" border: 1px solid {theme.border_color()}; border-radius: 8px; }}"
     )
     layout = QVBoxLayout(frame)
     layout.setContentsMargins(12, 10, 12, 10)
     layout.setSpacing(4)
 
+    # Fix the wrapping width so each word-wrapped label reports its true (multi-line) height. Without a
+    # fixed width the labels report their single-line height to adjustSize(), and any note longer than
+    # a few lines gets clipped at the bottom.
+    content_width = 316
+
     heading = QLabel(title)
     heading.setFont(theme.heading_font(12))
     heading.setWordWrap(True)
+    heading.setFixedWidth(content_width)
     body = QLabel(text)
     body.setFont(theme.body_font())
     body.setWordWrap(True)
+    body.setFixedWidth(content_width)
     body.setStyleSheet(f"color: {theme.muted_text()};")
     layout.addWidget(heading)
     layout.addWidget(body)
 
-    frame.setMaximumWidth(340)
+    layout.setSizeConstraint(QVBoxLayout.SetFixedSize)
     frame.adjustSize()
 
     # Keep the popover on-screen.

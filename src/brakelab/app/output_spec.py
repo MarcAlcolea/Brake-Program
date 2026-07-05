@@ -136,7 +136,22 @@ GROUPS: tuple[OutputGroup, ...] = (
             _o("Theoretical Effective Stroke (St(Teff))", "mm", "St(Teff) = (St(f,mc) + St(r,mc)) / 2", "",
                lambda r, c: r.pedal_travel.theoretical_effective_stroke),
             _o("Effective Stroke with Compliance (St(Ceff))", "mm", "St(Ceff) = St(Teff) + Compliance Factor",
-               "Theoretical MC stroke + compliance factor", lambda r, c: r.pedal_travel.effective_stroke),
+               "Theoretical MC stroke + compliance factor. This is the actual master-cylinder stroke "
+               "consumed, and what the operational / hard-stop / mechanical limits are checked against.",
+               lambda r, c: r.pedal_travel.effective_stroke),
+            _o("Max Operational Stroke (St(op))", "mm", "St(op) = 40% of Max MC Stroke",
+               "Largest stroke we want to use in normal operation. The healthy operating window is "
+               "20–40% of the mechanical limit; this is shown at the 40% upper bound. Staying under it "
+               "is a target, not a hard requirement.",
+               lambda r, c: c.hydraulics.max_operational_stroke),
+            _o("Hard-stop / Failure Stroke (St(hs))", "mm", "St(hs) = 50% of Max MC Stroke",
+               "Stroke at which a hard stop / failure condition is reached — a fixed 50% of the "
+               "mechanical limit. The effective stroke must stay below this.",
+               lambda r, c: c.hydraulics.hardstop_stroke),
+            _o("Absolute Mechanical Stroke Limit", "mm", "Maximum Master Cylinder Stroke (input)",
+               "The master cylinder's absolute mechanical stroke limit. The effective stroke must never "
+               "reach it; the operational and hard-stop limits are fractions of it.",
+               lambda r, c: c.hydraulics.max_mc_stroke),
             _o("Pedal Travel (Trav(pedal))", "mm", "Trav(pedal) = St(Ceff) * PR",
                "Pedal travel between 30 and 60 mm is desirable", lambda r, c: r.pedal_travel.pedal_travel),
             _o("BOTS Trigger Point", "mm", "BOTS = St(Ceff) + BOTS margin",

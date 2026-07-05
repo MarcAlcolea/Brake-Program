@@ -86,8 +86,11 @@ GROUPS: tuple[Group, ...] = (
             Field("hydraulics.mc_bore_rear", "Master Cylinder Bore Diam (Rear)", "mm", "float", 10, 30, 3,
                   "Rear master-cylinder bore diameter. A front/rear bore difference can be used to "
                   "perform brake bias."),
-            Field("hydraulics.max_mc_stroke", "Maximum Master Cylinder Stroke", "mm", "float", 5, 60, 2,
-                  "(1.1 inches), from Tilton 76 and 78 series"),
+            Field("hydraulics.max_mc_stroke", "Max MC Stroke (mechanical limit)", "mm",
+                  "float", 5, 60, 2,
+                  "Absolute mechanical stroke limit of the master cylinder (1.1 inches, from Tilton 76 "
+                  "and 78 series). We never want to actually reach this — the operational and hard-stop "
+                  "limits shown in the outputs are fixed fractions of it."),
             Field("pedal_box.pedal_ratio", "Pedal Ratio (PR)", "-", "float", 2, 10, 2,
                   "Mechanical leverage (like 4:1)"),
             Field("pedal_box.balance_bias_front", "Balance Bar Bias Front (B(f))", "-", "float", 0.35, 0.65, 2,

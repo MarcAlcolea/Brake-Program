@@ -63,10 +63,6 @@ class ReportTab(QWidget):
         self._v.setContentsMargins(10, 8, 10, 8)
         self._v.setSpacing(6)
 
-        self._title_h("Engineering Report")
-        self._hint("Build a PDF report. Choose the setup the numbers come from, what to include, and "
-                   "how the cover reads.")
-
         self._build_setup_and_detail()
         self._build_cover_fields()
         self._build_section_choices()
@@ -81,11 +77,6 @@ class ReportTab(QWidget):
         self.reload()
 
     # ---- construction helpers ---------------------------------------------------------------
-    def _title_h(self, text: str) -> None:
-        lab = QLabel(text)
-        lab.setFont(theme.heading_font(16))
-        self._v.addWidget(lab)
-
     def _section_h(self, text: str) -> None:
         lab = QLabel(text)
         lab.setFont(theme.heading_font(13))
@@ -227,6 +218,7 @@ class ReportTab(QWidget):
         else:
             self._opt_note.setText("")
         self._sync_compare_enabled()
+        theme.style_checkboxes(self)  # style the freshly-created comparison checkboxes
 
     def _sync_compare_enabled(self) -> None:
         self._compare_holder.setEnabled(self._c_compare.isChecked())

@@ -76,7 +76,7 @@ class OutputsPanel(QWidget):
         pos = table.viewport().mapToGlobal(rect.bottomLeft())
         body = f"Formula:  {output.formula}"
         if output.description:
-            body += f"\n\n{output.description}"
+            body += f"\n{output.description}"
         if output in self._assumed_affected:
             body += "\n\n⚠ This value depends on one or more inputs you marked as assumed."
         show_popover(pos, output.label, body)

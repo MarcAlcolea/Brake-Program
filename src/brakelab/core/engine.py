@@ -8,7 +8,17 @@ engine simply wires them together and gathers validation messages.
 
 from __future__ import annotations
 
-from . import brakes, dynamics, hydraulics, pedal_travel, requirements, thermal, tires, validation
+from . import (
+    brakes,
+    dynamics,
+    forward,
+    hydraulics,
+    pedal_travel,
+    requirements,
+    thermal,
+    tires,
+    validation,
+)
 from .models import VehicleConfig
 from .results import BrakeResults
 from .units import GRAVITY
@@ -32,6 +42,7 @@ class BrakeEngine:
         therm = thermal.solve_thermal(
             config.mass, config.pedal_box, config.front_axle, config.rear_axle, config.thermal
         )
+        fwd = forward.solve_forward(config, self.gravity)
 
         reqs = tuple(requirements.evaluate_requirements(config, hyd, travel))
         messages = tuple(
@@ -45,6 +56,7 @@ class BrakeEngine:
             hydraulics=hyd,
             pedal_travel=travel,
             thermal=therm,
+            forward=fwd,
             requirements=reqs,
             messages=messages,
         )
