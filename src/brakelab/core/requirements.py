@@ -50,9 +50,9 @@ def evaluate_requirements(
         )
     )
 
-    # Master-cylinder stroke, checked in three tiers against the effective stroke actually consumed
-    # (theoretical stroke + compliance). Operational is a target we want to stay under; the hard-stop
-    # and absolute mechanical limits are failures.
+    # Master-cylinder stroke: only the operational target is a requirement. The hard-stop and absolute
+    # mechanical limits are shown as outputs (Pedal Travel group), not requirements, so they don't
+    # clutter this section — they're reference limits, not pass/fail checks.
     hyd = config.hydraulics
     effective = p.effective_stroke
     reqs.append(
@@ -65,28 +65,6 @@ def evaluate_requirements(
             current_text=f"{effective:,.2f} mm used",
             passed=effective <= hyd.max_operational_stroke,
             hard=False,
-        )
-    )
-    reqs.append(
-        Requirement(
-            name="MC stroke within hard-stop limit",
-            description="The effective master-cylinder stroke must stay below the hard-stop / failure "
-            "stroke, set as a fraction (typically 50%) of the mechanical limit.",
-            requirement_text=f"at most {hyd.hardstop_stroke:,.2f} mm of stroke",
-            current_text=f"{effective:,.2f} mm used",
-            passed=effective <= hyd.hardstop_stroke,
-            hard=True,
-        )
-    )
-    reqs.append(
-        Requirement(
-            name="MC stroke within mechanical limit",
-            description="The effective master-cylinder stroke must fit within the master cylinder's "
-            "absolute mechanical stroke limit.",
-            requirement_text=f"at most {hyd.max_mc_stroke:,.2f} mm of stroke",
-            current_text=f"{effective:,.2f} mm used",
-            passed=effective <= hyd.max_mc_stroke,
-            hard=True,
         )
     )
 
