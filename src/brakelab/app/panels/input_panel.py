@@ -70,6 +70,9 @@ class InputPanel(QWidget):
         layout.addStretch(1)
 
         controller.configReplaced.connect(self._reload_from_config)
+        # Also refresh when values change without a whole new config — e.g. picking a Component fills
+        # the bore/area inputs, and the optimizer can load a design. Editors must reflect that live.
+        controller.resultsChanged.connect(self._reload_from_config)
 
     def _make_editor(self, field) -> QWidget:
         value = self._controller.value(field.path)
@@ -100,7 +103,7 @@ class InputPanel(QWidget):
 
     def _make_unit_widget(self, field) -> QWidget:
         units = compatible_units(field.unit) if field.kind != "bool" else []
-        if len(units) <= 1:
+        if getattr(field, "fixed_unit", False) or len(units) <= 1:
             return QLabel("" if field.unit in ("", "-") else field.unit)
         combo = QComboBox()
         combo.addItems(units)

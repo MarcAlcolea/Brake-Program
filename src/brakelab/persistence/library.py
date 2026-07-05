@@ -85,7 +85,10 @@ class ConfigLibrary:
 
     # --- defaults ----------------------------------------------------------------------------
     def seed_defaults(self) -> None:
-        """Populate the library on first run with presets from the original spreadsheet."""
+        """Populate the library on first run with presets from the original spreadsheet.
+
+        The reference configs reproduce the spreadsheet exactly (1.5 g, 400 N) for validation; the
+        seeded presets use the team's current design defaults (1.3 g target, 340 N driver force)."""
         if self.names():
             return
         from .. import reference_configs
@@ -93,10 +96,14 @@ class ConfigLibrary:
         michigan = reference_configs.outboarded_x2()
         michigan.name = "2027 Michigan Car"
         michigan.notes = "Original spreadsheet inputs (x2 outboarded rear). Default preset."
+        michigan.target_decel_g = 1.3
+        michigan.pedal_box.driver_force = 340.0
         self.save(michigan)
 
         inboard = reference_configs.inboarded_x1()
         inboard.name = "2027 Inboard Concept"
+        inboard.target_decel_g = 1.3
+        inboard.pedal_box.driver_force = 340.0
         self.save(inboard)
 
     @property

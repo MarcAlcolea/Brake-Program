@@ -21,6 +21,8 @@ class Field:
     maximum: float = 1e6
     decimals: int = 3
     note: str = ""       # the spreadsheet's own comment for this input (verbatim)
+    fixed_unit: bool = False  # if True, show the unit as a static label with no conversion dropdown
+    #                           (e.g. "g" here is a g-force ratio, not grams — must not be converted)
 
 
 @dataclass(frozen=True)
@@ -44,7 +46,8 @@ GROUPS: tuple[Group, ...] = (
                   "considering weight distrubition reccomended by Woods, doc 2. Vehicle Parameters "
                   "(suspension subteam)."),
             Field("target_decel_g", "Target Deceleration (a)", "g", "float", 0.1, 3.0, 2,
-                  "e.g. 1.5 (dimensionless ratio relative to gravity)"),
+                  "e.g. 1.3 — a dimensionless ratio relative to gravity (g-force), not a mass. "
+                  "There is no other unit to convert to.", fixed_unit=True),
         ),
     ),
     Group(
