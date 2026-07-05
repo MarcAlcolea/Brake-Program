@@ -17,7 +17,6 @@ from PySide6.QtWidgets import (
     QFileDialog,
     QFrame,
     QHBoxLayout,
-    QListWidget,
     QMainWindow,
     QMessageBox,
     QPushButton,
@@ -40,7 +39,7 @@ from .panels.optimization_tab import OptimizationTab
 from .panels.outputs_panel import OutputsPanel
 from .panels.requirements_panel import RequirementsPanel
 from .plots.plot_panel import PlotPanel
-from .uikit import style_nav
+from .widgets import ClickableLabel
 
 _PAGES = ["Design", "Optimize", "Compare", "Plots"]
 
@@ -76,24 +75,24 @@ class MainWindow(QMainWindow):
 
         self.controller.configReplaced.connect(lambda c: self._set_title(c.name))
         self._set_title(controller.config.name)
-        self._nav.setCurrentRow(0)
+        self._select_page(0)
 
     # ---- sidebar ----------------------------------------------------------------------------
     def _sidebar(self) -> QWidget:
         panel = QWidget()
         panel.setFixedWidth(168)
         v = QVBoxLayout(panel)
-        v.setContentsMargins(8, 12, 8, 12)
-        v.setSpacing(8)
+        v.setContentsMargins(10, 14, 8, 12)
+        v.setSpacing(10)
 
-        self._nav = QListWidget()
-        self._nav.addItems(_PAGES)
-        self._nav.setFrameShape(QFrame.NoFrame)
-        self._nav.setSpacing(4)
-        self._nav.setFont(theme.heading_font(14, bold=False))
-        self._nav.currentRowChanged.connect(self._on_page)
-        style_nav(self._nav)  # active tab shown in bold, no grey selection box
-        v.addWidget(self._nav, 1)
+        self._nav_labels: list[ClickableLabel] = []
+        for i, name in enumerate(_PAGES):
+            label = ClickableLabel(name)
+            label.setFont(theme.heading_font(14, bold=False))
+            label.clicked.connect(lambda idx=i: self._select_page(idx))
+            self._nav_labels.append(label)
+            v.addWidget(label)
+        v.addStretch(1)
 
         self._theme_btn = QPushButton()
         self._theme_btn.clicked.connect(self._toggle_dark)
@@ -105,7 +104,9 @@ class MainWindow(QMainWindow):
         v.addWidget(export)
         return panel
 
-    def _on_page(self, index: int) -> None:
+    def _select_page(self, index: int) -> None:
+        for j, label in enumerate(self._nav_labels):
+            label.setFont(theme.heading_font(14, bold=(j == index)))
         self._stack.setCurrentIndex(index)
         if self._stack.currentWidget() is self._compare:
             self._compare.reload_configs()

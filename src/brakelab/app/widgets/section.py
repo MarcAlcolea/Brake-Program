@@ -1,44 +1,48 @@
-"""A lightweight collapsible section — a bold clickable header over its content, no box border.
+"""A collapsible section — a plain clickable header over its content, with no box.
 
-Used instead of nested group boxes so pages stay flat and uncluttered: the only bold text is the
-section header, and users can collapse parts they don't need.
+The header is a clickable label (not a button), so there is never a grey background box. When the
+section is expanded the header is bold Helvetica; when collapsed it is light. A small triangle marks
+the state.
 """
 
 from __future__ import annotations
 
-from PySide6.QtCore import Qt
-from PySide6.QtWidgets import QToolButton, QVBoxLayout, QWidget
+from PySide6.QtWidgets import QVBoxLayout, QWidget
 
 from .. import theme
+from .clickable import ClickableLabel
 
 
 class CollapsibleSection(QWidget):
     def __init__(self, title: str, content: QWidget, expanded: bool = True, parent: QWidget | None = None) -> None:
         super().__init__(parent)
+        self._title = title
+        self._expanded = expanded
+        self._content = content
+
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 2, 0, 6)
         layout.setSpacing(2)
 
-        self._button = QToolButton()
-        self._button.setText(title)
-        self._button.setCheckable(True)
-        self._button.setChecked(expanded)
-        self._button.setToolButtonStyle(Qt.ToolButtonTextBesideIcon)
-        self._button.setArrowType(Qt.DownArrow if expanded else Qt.RightArrow)
-        self._button.setAutoRaise(True)
-        self._button.setFont(theme.heading_font())
-        self._button.setCursor(Qt.PointingHandCursor)
-        self._button.toggled.connect(self._toggle)
-
-        self._content = content
+        self._header = ClickableLabel()
+        self._header.setMargin(2)
+        self._header.clicked.connect(self._toggle)
         self._content.setVisible(expanded)
+        self._render()
 
-        layout.addWidget(self._button)
+        layout.addWidget(self._header)
         layout.addWidget(self._content)
 
-    def _toggle(self, checked: bool) -> None:
-        self._content.setVisible(checked)
-        self._button.setArrowType(Qt.DownArrow if checked else Qt.RightArrow)
+    def _toggle(self) -> None:
+        self._expanded = not self._expanded
+        self._content.setVisible(self._expanded)
+        self._render()
+
+    def _render(self) -> None:
+        arrow = "▾" if self._expanded else "▸"  # ▾ / ▸
+        self._header.setText(f"{arrow}  {self._title}")
+        self._header.setFont(theme.heading_font(13, bold=self._expanded))
 
     def set_expanded(self, expanded: bool) -> None:
-        self._button.setChecked(expanded)
+        if expanded != self._expanded:
+            self._toggle()
