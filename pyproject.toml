@@ -3,6 +3,19 @@ name = "brakelab"
 version = "0.0.1"
 description = "FSAE brake system design tool"
 requires-python = ">=3.9"
+dependencies = [
+    "PySide6>=6.6",     # desktop GUI
+    "matplotlib>=3.8",  # plots (sensitivity, optimization charts)
+    "reportlab>=4.0",   # PDF reports
+]
+
+[project.optional-dependencies]
+# Development / test only (not needed to run the app).
+dev = [
+    "pytest>=8.0",
+    "openpyxl>=3.1",     # reading the reference spreadsheet
+    "python-docx>=1.1",  # reading the reference thermal doc
+]
 
 [build-system]
 requires = ["setuptools>=68"]

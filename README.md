@@ -30,35 +30,44 @@ src/brakelab/
 tests/         golden-value + property + round-trip tests
 ```
 
-## Run (the easy way)
+## Running BrakeLab
+
+You need **Python 3.11 or 3.12 (64-bit)**. Get the code first — download the ZIP from GitHub and
+extract it, or `git clone https://github.com/MarcAlcolea/Brake-Program.git`.
+
+### Windows — the easy way
+Double-click **`run.bat`**. The first run creates a local virtual environment and installs
+everything (takes a minute); every run after that just launches the GUI.
+
+> If Windows warns about python not being found, install it from
+> [python.org](https://www.python.org/downloads/) and **tick "Add python.exe to PATH"** on the first
+> screen, then double-click `run.bat` again.
+
+### macOS — the easy way
 Double-click **`run.command`** in Finder, or from a terminal in this folder:
 ```
 ./run.command
 ```
-That launches the GUI with the 2026 baseline loaded. No setup, no virtualenv to activate.
 
-## Run (terminal)
+### Any platform — from a terminal
 ```
-python3 -m brakelab                                     # launch the GUI
-python3 -m brakelab.cli configs/2026_baseline.json      # headless: print results
-python3 -m brakelab.cli configs/2026_baseline.json --report out.pdf   # + PDF report
-python3 -m pytest                                       # run the test suite
+python -m venv .venv                 # create a virtual environment (once)
+# activate it:  Windows -> .venv\Scripts\activate    macOS/Linux -> source .venv/bin/activate
+python -m pip install -e .           # install BrakeLab + its dependencies (once)
+python -m brakelab                   # launch the GUI
 ```
-Use `python3` (this machine has no `python`/`pip` on the PATH — use `python3 -m pip`).
+Headless / development commands:
+```
+python -m brakelab.cli configs/2026_baseline.json                    # print results, no GUI
+python -m brakelab.cli configs/2026_baseline.json --report out.pdf   # + PDF report
+python -m pip install -e ".[dev]"                                    # add the test/dev extras
+python -m pytest                                                     # run the test suite
+```
 
-## Setup on a new machine
-Dependencies (installed once, into the system Python's user site):
-```
-python3 -m pip install -r requirements.txt
-```
-The code under `src/` is put on the import path by a `brakelab.pth` file in the user site-packages
-(so `python3 -m brakelab` works from anywhere), and `run.command` also sets `PYTHONPATH` itself.
-
-> **macOS note:** a `python -m venv` virtualenv is normally preferred, but on the stock
-> CommandLineTools Python the venv's PySide6 can fail to load its Qt plugins
-> (*"Could not find the Qt platform plugin cocoa"*). If that happens, use the system Python +
-> `run.command` as above. Installing a full Python from python.org and using a venv there also
-> resolves it.
+> **macOS note:** on the stock CommandLineTools Python a venv's PySide6 can fail to load its Qt
+> plugins (*"Could not find the Qt platform plugin cocoa"*). If that happens, use `run.command`
+> (it uses the system Python), or install a full Python from [python.org](https://www.python.org)
+> and use a venv there.
 
 ## Design principles
 1. **Correctness first** — physics lives in a pure, fully-tested core validated against
