@@ -7,10 +7,27 @@ apply consistently. A module flag records the current mode so widgets can pick r
 
 from __future__ import annotations
 
+import sys
+
 from PySide6.QtGui import QColor, QFont, QPalette
 from PySide6.QtWidgets import QApplication
 
-_FAMILIES = ["Helvetica Neue", "Helvetica", "Arial"]
+
+def _family_stack() -> list[str]:
+    """A clean, light-weight sans-serif per platform.
+
+    Windows has no Helvetica: asking for it there yields a low-resolution *bitmap* substitute
+    (MS Sans Serif) that doesn't antialias or scale. So we ask for the native crisp font instead —
+    Segoe UI, which also has a real Light weight — and only use Helvetica on macOS where it exists.
+    """
+    if sys.platform == "darwin":
+        return ["Helvetica Neue", "Helvetica", "Arial"]
+    if sys.platform.startswith("win"):
+        return ["Segoe UI", "Arial"]
+    return ["Nimbus Sans", "Arial", "DejaVu Sans"]  # Linux
+
+
+_FAMILIES = _family_stack()
 _SIZE = 13
 
 _is_dark = False
@@ -25,6 +42,7 @@ def body_font() -> QFont:
     f.setFamilies(_FAMILIES)
     f.setPointSize(_SIZE)
     f.setWeight(QFont.Weight.Light)
+    f.setStyleStrategy(QFont.PreferAntialias)  # never fall back to a bitmap font
     return f
 
 
@@ -33,6 +51,7 @@ def heading_font(size: int = _SIZE, bold: bool = True) -> QFont:
     f.setFamilies(_FAMILIES)
     f.setPointSize(size)
     f.setWeight(QFont.Weight.Bold if bold else QFont.Weight.Light)
+    f.setStyleStrategy(QFont.PreferAntialias)
     return f
 
 
