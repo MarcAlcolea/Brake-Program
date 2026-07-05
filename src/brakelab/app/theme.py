@@ -13,21 +13,37 @@ from PySide6.QtGui import QColor, QFont, QPalette
 from PySide6.QtWidgets import QApplication
 
 
-def _family_stack() -> list[str]:
-    """A clean, light-weight sans-serif per platform.
-
-    Windows has no Helvetica: asking for it there yields a low-resolution *bitmap* substitute
-    (MS Sans Serif) that doesn't antialias or scale. So we ask for the native crisp font instead —
-    Segoe UI, which also has a real Light weight — and only use Helvetica on macOS where it exists.
-    """
-    if sys.platform == "darwin":
-        return ["Helvetica Neue", "Helvetica", "Arial"]
+def _platform_fallback() -> list[str]:
+    """The crisp native sans-serif to use when genuine Helvetica isn't installed."""
     if sys.platform.startswith("win"):
         return ["Segoe UI", "Arial"]
+    if sys.platform == "darwin":
+        return ["Helvetica Neue", "Helvetica", "Arial"]
     return ["Nimbus Sans", "Arial", "DejaVu Sans"]  # Linux
 
 
-_FAMILIES = _family_stack()
+def _resolve_families() -> list[str]:
+    """Prefer real Helvetica when the machine actually has it; otherwise the platform fallback.
+
+    macOS ships Helvetica/Helvetica Neue, so it's used there. Windows does not, and asking for it
+    yields a low-resolution *bitmap* stand-in — so we only use Helvetica if it is genuinely installed
+    AND smoothly scalable (i.e. a real outline font, not the bitmap). A friend who installs a licensed
+    Helvetica on Windows then gets it automatically."""
+    fallback = _platform_fallback()
+    try:
+        from PySide6.QtGui import QFontDatabase
+
+        installed = set(QFontDatabase.families())
+        preferred = [
+            fam for fam in ("Helvetica Neue", "Helvetica")
+            if fam in installed and QFontDatabase.isSmoothlyScalable(fam)
+        ]
+    except Exception:  # noqa: BLE001 — no QApplication yet or query failed; use the fallback
+        return fallback
+    return preferred + [f for f in fallback if f not in preferred]
+
+
+_FAMILIES = _platform_fallback()  # replaced by _resolve_families() once a QApplication exists
 _SIZE = 13
 
 _is_dark = False
@@ -57,8 +73,9 @@ def heading_font(size: int = _SIZE, bold: bool = True) -> QFont:
 
 # ---- palette ---------------------------------------------------------------------------------
 def apply_theme(app: QApplication, dark: bool) -> None:
-    global _is_dark
+    global _is_dark, _FAMILIES
     _is_dark = dark
+    _FAMILIES = _resolve_families()  # now a QApplication exists, so we can check what's installed
     app.setStyle("Fusion")
     app.setFont(body_font())
 
