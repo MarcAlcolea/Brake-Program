@@ -19,6 +19,7 @@ src/brakelab/
 │  ├─ brakes.py          Phase 3: clamp force, line pressure
 │  ├─ hydraulics.py      Phase 4: master cylinder, balance bar, pedal force
 │  ├─ pedal_travel.py    fluid volume, MC stroke, pedal travel, BOTS
+│  ├─ thermal.py         brake-rotor heat flux + film coefficient (ANSYS inputs)
 │  ├─ requirements.py    the pass/fail engineering checks
 │  ├─ validation.py      input sanity checks
 │  ├─ results.py         the result objects every phase fills in
@@ -41,8 +42,9 @@ src/brakelab/
 ├─ thermal/              stub for the future rotor thermal model
 │
 ├─ app/                  THE GUI (PySide6) — no physics lives here
-│  ├─ field_spec.py      ← declarative list of INPUTS (label, unit, range, note)
-│  ├─ output_spec.py     ← declarative list of OUTPUTS (label, formula, note, getter)
+│  ├─ field_spec.py      ← declarative list of Main-tab INPUTS (label, unit, range, note)
+│  ├─ output_spec.py     ← declarative list of Main-tab OUTPUTS (label, formula, note, getter)
+│  ├─ thermal_spec.py    ← the Thermal tab's inputs/outputs + shared read-only values
 │  ├─ controller.py      holds the active config, recomputes, notifies panels
 │  ├─ theme.py           light/dark palettes + fonts
 │  ├─ uikit.py           shared table/combo helpers

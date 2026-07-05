@@ -64,6 +64,8 @@ class ConfigBar(QWidget):
         row.addStretch(1)
 
         self._reload_combo(select=controller.config.name)
+        # Keep the dropdown in sync when the config is replaced elsewhere (e.g. the other tab's bar).
+        controller.configReplaced.connect(lambda c: self._reload_combo(select=c.name))
 
     def _reload_combo(self, select: str | None = None) -> None:
         self._combo.blockSignals(True)

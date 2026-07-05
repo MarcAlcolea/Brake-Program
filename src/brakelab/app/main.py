@@ -38,10 +38,12 @@ from .panels.input_panel import InputPanel
 from .panels.optimization_tab import OptimizationTab
 from .panels.outputs_panel import OutputsPanel
 from .panels.requirements_panel import RequirementsPanel
+from .panels.shared_info_panel import SharedInfoPanel
 from .plots.plot_panel import PlotPanel
 from .widgets import ClickableLabel
+from . import thermal_spec
 
-_PAGES = ["Design", "Optimize", "Compare", "Plots"]
+_PAGES = ["Main", "Thermal", "Optimize", "Compare", "Plots"]
 
 
 class MainWindow(QMainWindow):
@@ -57,6 +59,7 @@ class MainWindow(QMainWindow):
 
         self._stack = QStackedWidget()
         self._stack.addWidget(self._design_page())
+        self._stack.addWidget(self._thermal_page())
         self._stack.addWidget(self._optimize)
         self._stack.addWidget(self._compare)
         self._stack.addWidget(PlotPanel(self.controller))
@@ -145,6 +148,40 @@ class MainWindow(QMainWindow):
         v.addWidget(splitter, 1)
         return page
 
+    # ---- thermal page -----------------------------------------------------------------------
+    def _thermal_page(self) -> QWidget:
+        """Brake-rotor thermal calculations for ANSYS. Same layout as Main: inputs left, outputs
+        right, one shared config (so presets and shared values carry over automatically)."""
+        left = QWidget()
+        lv = QVBoxLayout(left)
+        lv.setContentsMargins(4, 4, 4, 4)
+        lv.addWidget(SharedInfoPanel(self.controller))
+        lv.addWidget(InputPanel(self.controller, groups=thermal_spec.INPUT_GROUPS))
+        lv.addStretch(1)
+        left_scroll = _scroll(left)
+        left_scroll.setMinimumWidth(430)
+
+        self._thermal_outputs = OutputsPanel(self.controller, groups=thermal_spec.OUTPUT_GROUPS)
+        right = QWidget()
+        rv = QVBoxLayout(right)
+        rv.setContentsMargins(4, 4, 4, 4)
+        rv.addWidget(self._thermal_outputs)
+        rv.addStretch(1)
+        right_scroll = _scroll(right)
+
+        splitter = QSplitter(Qt.Horizontal)
+        splitter.addWidget(left_scroll)
+        splitter.addWidget(right_scroll)
+        splitter.setStretchFactor(0, 0)
+        splitter.setStretchFactor(1, 1)
+
+        page = QWidget()
+        v = QVBoxLayout(page)
+        v.setContentsMargins(6, 6, 6, 2)
+        v.addWidget(ConfigBar(self.controller, self.library))
+        v.addWidget(splitter, 1)
+        return page
+
     # ---- theme / actions --------------------------------------------------------------------
     def _update_theme_button(self) -> None:
         self._theme_btn.setText("Switch to light" if theme.is_dark() else "Switch to dark")
@@ -155,6 +192,7 @@ class MainWindow(QMainWindow):
             theme.apply_theme(app, dark=not theme.is_dark())
             self._update_theme_button()
             self._outputs.reset_highlights()
+            self._thermal_outputs.reset_highlights()
 
     def _set_title(self, name: str) -> None:
         self.setWindowTitle(f"BrakeLab — {name}")

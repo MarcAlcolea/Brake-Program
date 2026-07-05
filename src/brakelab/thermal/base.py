@@ -1,17 +1,21 @@
-"""Brake-rotor thermal analysis — deferred module (design stub).
+"""Brake-rotor thermal analysis — future full-simulation module (design stub).
 
-Planned as an :class:`~brakelab.analyses.base.Analysis` subclass so it plugs in without touching
-the core. It will reproduce and replace the hand calculations in
-``reference/Brake Rotors Simulations 2026.docx``:
+The *algebraic ANSYS-input* calculations from ``reference/Brake Rotors Simulations 2026.docx`` are
+already implemented as a core phase in :mod:`brakelab.core.thermal` and shown on the GUI's Thermal
+tab (steps 1–3 below). This package is reserved for the heavier, later work — a self-contained
+transient temperature *simulation* that plugs in as an :class:`~brakelab.analyses.base.Analysis`
+without touching the core:
 
-1. Braking energy per event ``E = 1/2 m (v_i^2 - v_f^2)`` and power ``P = E / t``.
-2. Split energy to each rotor. The document splits by hydraulic bias; the engine can instead use
-   the actual braking-force distribution from :mod:`brakelab.core.dynamics` (audit **T1**), and it
-   must use the same ``n_rotors`` as the mechanical model so an inboard single rear rotor gets the
-   full rear energy (audit **T2**).
-3. Peak heat flux ``q = P_rotor / A_swept`` and a speed-dependent film coefficient ``h = 10 + 3v``.
-4. A lumped-capacitance transient temperature model over a duty cycle, and export of ANSYS-ready
-   heat-flux / film-coefficient tabular data.
+1. [done, core] Braking energy ``E = 1/2 m (v_i^2 - v_f^2)`` and power ``P = E / t``.
+2. [done, core] Split energy to each rotor, coupled to the mechanical model's ``n_rotors`` so an
+   inboard single rear rotor gets the full rear energy (audit **T2**), with an explicit rotor/pad
+   partition (audit **T3**). The document's hydraulic-bias split is used; using the actual
+   braking-force distribution from :mod:`brakelab.core.dynamics` instead (audit **T1**) is a
+   possible refinement.
+3. [done, core] Peak heat flux ``q = P_rotor / A_swept`` and a speed-dependent film coefficient
+   ``h = a + b v``.
+4. [future, here] A lumped-capacitance transient temperature model over a duty cycle, and export of
+   ANSYS-ready heat-flux / film-coefficient tabular data as files.
 
 A ``materials`` library (1018 steel, 4130 chromoly: density, conductivity, specific heat,
 emissivity, E, yield, CTE) will seed step 4 — values are captured in ``docs/calculation_audit.md``.

@@ -30,18 +30,21 @@ def _fmt(value: float) -> str:
 
 
 class InputPanel(QWidget):
-    def __init__(self, controller: ProjectController, parent: QWidget | None = None) -> None:
+    def __init__(self, controller: ProjectController, groups=None, parent: QWidget | None = None) -> None:
         super().__init__(parent)
         self._controller = controller
         self._editors: dict[str, QWidget] = {}
         self._display_unit: dict[str, str] = {}
 
-        from ..field_spec import GROUPS
+        if groups is None:
+            from ..field_spec import GROUPS
+            groups = GROUPS
+        self._groups = groups
 
         layout = QVBoxLayout(self)
         layout.setContentsMargins(2, 2, 2, 2)
         layout.setSpacing(2)
-        for group in GROUPS:
+        for group in groups:
             content = QWidget()
             grid = QGridLayout(content)
             grid.setContentsMargins(14, 2, 2, 6)
@@ -111,9 +114,7 @@ class InputPanel(QWidget):
             editor.setText(self._display_text(field, self._controller.value(field.path)))
 
     def _reload_from_config(self, _config) -> None:
-        from ..field_spec import GROUPS
-
-        specs = {f.path: f for g in GROUPS for f in g.fields}
+        specs = {f.path: f for g in self._groups for f in g.fields}
         for path, editor in self._editors.items():
             value = self._controller.value(path)
             editor.blockSignals(True)

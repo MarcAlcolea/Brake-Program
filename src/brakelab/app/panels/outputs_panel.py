@@ -21,16 +21,19 @@ _CLEAR = QColor(0, 0, 0, 0)
 
 
 class OutputsPanel(QWidget):
-    def __init__(self, controller: ProjectController, parent: QWidget | None = None) -> None:
+    def __init__(self, controller: ProjectController, groups=None, parent: QWidget | None = None) -> None:
         super().__init__(parent)
         self._controller = controller
         self._value_items: list[tuple[Output, QTableWidgetItem]] = []
         self._previous: dict[str, float] = {}
 
+        if groups is None:
+            groups = GROUPS
+
         layout = QVBoxLayout(self)
         layout.setContentsMargins(2, 2, 2, 2)
         layout.setSpacing(2)
-        for group in GROUPS:
+        for group in groups:
             table = plain_table(["Quantity", "Value", "Unit", ""], stretch_col=0)
             row_output: dict[int, Output] = {}
             table.setRowCount(len(group.outputs))

@@ -29,16 +29,21 @@ WHAT IT IS (all built and working):
 - core/ = the physics (pure Python, no GUI, fully tested): 5 phases (dynamics, tires, brakes,
   hydraulics, pedal_travel) + requirements + validation + engine.solve(config)->BrakeResults.
 - app/ = PySide6 GUI. Inputs/outputs are DECLARATIVE lists in app/field_spec.py and
-  app/output_spec.py (the UI builds itself from them). Left SIDEBAR nav + 4 pages: Design,
-  Optimize, Compare, Plots. Config library (presets), per-field unit switching, component catalog,
-  optimization studio (5 sections), PDF reports, light/dark themes.
+  app/output_spec.py (the UI builds itself from them). Left SIDEBAR nav + 5 pages: Main (formerly
+  "Design"), Thermal, Optimize, Compare, Plots. Config library (presets), per-field unit switching,
+  component catalog, optimization studio (5 sections), PDF reports, light/dark themes.
+- Thermal tab: same layout as Main, driven by app/thermal_spec.py; computes the ANSYS-input brake-
+  rotor heat flux + film coefficient (core/thermal.py). It shares ONE config with Main, so presets
+  carry over and shared values (mass, bias, rotor counts) show read-only on Thermal.
 - optimization/ = SEPARATE pluggable subsystem (problem/metrics/algorithms/runner/sensitivity/
   report). Random-search backend now; SciPy/GA/CasADi/OpenMDAO add via the Optimizer interface with
   no UI changes. Supports discrete "catalog" variables (e.g. MC bore from Tilton 76-Series).
 - components/catalog.py = real parts (Tilton MCs, Wilwood GP200/PS-1 calipers, BP-10/20/28/40 pads).
   Some specs approximate/flagged — verify against datasheets.
-- persistence/ (JSON + in-program library), reporting/ (PDF), analyses/ (Analysis seam),
-  thermal/ (documented STUB — NOT implemented yet).
+- persistence/ (JSON + in-program library), reporting/ (PDF), analyses/ (Analysis seam).
+  core/thermal.py = the algebraic ANSYS-input calcs (heat flux, film coeff) behind the Thermal tab.
+  thermal/ = still a STUB, reserved for the FUTURE full transient temperature *simulation* + file
+  export (not the algebraic inputs, which are done).
 
 CALC FIXES ALREADY MADE (see docs/calculation_audit.md):
 - B1: front weight fraction is one input; default 0.52 (front-biased 52F/48R) reproduces the sheet.
@@ -64,9 +69,10 @@ app/field_spec.py. Add output = compute in core + one _o(...) line in app/output
 component = one line in components/catalog.py. Add optimizer algorithm = implement Optimizer +
 register in optimization/algorithms/__init__.py.
 
-POSSIBLE NEXT STEPS (Marc will direct): implement the thermal module (energy->heat flux->transient
-temp->ANSYS export; notes in thermal/base.py and docs/calculation_audit.md); add rotors to the
-catalog; make caliper/pad discrete optimization variables; a SETUP.md / install script for teammates.
+POSSIBLE NEXT STEPS (Marc will direct): the FULL transient temperature simulation + ANSYS tabular-
+data file export (thermal/ package; the algebraic ANSYS inputs are already done on the Thermal tab);
+add rotors + a materials library to the catalog; expose the rotor/pad heat partition or dynamic heat
+split (audit T1); make caliper/pad discrete optimization variables; a SETUP.md / install script.
 
 Please start by confirming the app runs (tests pass, GUI launches) and summarizing the current state
 back to me before we pick the next task.

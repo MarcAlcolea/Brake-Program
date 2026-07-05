@@ -218,6 +218,15 @@ for the tool's future thermal module.
 - Minor doc transcription slips (superseded "OLD" section): clamp `5625` vs correct `5265`;
   rear stress compared to 1018 yield under a "4130" heading. Cosmetic; not in current calcs.
 
+**Implemented (2026-07-04).** The document's peak-heat-flux and film-coefficient calculations are
+now a core phase (`core/thermal.py`) shown on the app's **Thermal** tab, producing the ANSYS
+boundary-condition values (heat flux front/rear, `h = a + b·v`). Per-axle rotor count divides the
+axle energy, so a single inboard rear rotor absorbs the full rear share (**T2** handled); the
+rotor/pad partition is an explicit input defaulting to 1.0, which reproduces the doc (**T3**). The
+heat split still follows hydraulic bias as the document does; using the dynamic braking-force split
+(**T1**) remains a possible refinement. The lumped-capacitance transient *temperature simulation*
+(and file export of tabular data) is still future work in `thermal/`.
+
 **Material data captured for the thermal module** (from the doc's tables): 1018 and 4130
 density, conductivity (incl. temperature dependence), specific heat, emissivity, E, ν, yield,
 CTE. These will seed a `materials` library.
