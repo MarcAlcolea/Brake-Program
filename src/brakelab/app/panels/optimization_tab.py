@@ -135,6 +135,11 @@ class OptimizationTab(QWidget):
         self._layout.addStretch(1)
         self.refresh_current()
 
+    @property
+    def latest_result(self):
+        """The most recent optimization result, or ``None`` if none has been run yet."""
+        return self._result
+
     def _add(self, title: str, content: QWidget, expanded: bool = True) -> None:
         self._layout.addWidget(CollapsibleSection(title, content, expanded))
 

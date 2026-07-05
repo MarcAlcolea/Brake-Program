@@ -14,11 +14,9 @@ import sys
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
     QApplication,
-    QFileDialog,
     QFrame,
     QHBoxLayout,
     QMainWindow,
-    QMessageBox,
     QPushButton,
     QScrollArea,
     QSplitter,
@@ -37,13 +35,14 @@ from .panels.config_bar import ConfigBar
 from .panels.input_panel import InputPanel
 from .panels.optimization_tab import OptimizationTab
 from .panels.outputs_panel import OutputsPanel
+from .panels.report_tab import ReportTab
 from .panels.requirements_panel import RequirementsPanel
 from .panels.shared_info_panel import SharedInfoPanel
-from .plots.plot_panel import PlotPanel
+from .plots.plot_panel import SensitivityPanel
 from .widgets import ClickableLabel
 from . import thermal_spec
 
-_PAGES = ["Main", "Thermal", "Optimize", "Compare", "Plots"]
+_PAGES = ["Main", "Thermal", "Optimize", "Compare", "Sensitivity", "Report"]
 
 
 class MainWindow(QMainWindow):
@@ -56,13 +55,15 @@ class MainWindow(QMainWindow):
         self._outputs = OutputsPanel(self.controller)
         self._compare = CompareTab(library)
         self._optimize = OptimizationTab(self.controller, library)
+        self._report = ReportTab(self.controller, library, optimization_result=lambda: self._optimize.latest_result)
 
         self._stack = QStackedWidget()
         self._stack.addWidget(self._design_page())
         self._stack.addWidget(self._thermal_page())
         self._stack.addWidget(self._optimize)
         self._stack.addWidget(self._compare)
-        self._stack.addWidget(PlotPanel(self.controller))
+        self._stack.addWidget(SensitivityPanel(self.controller))
+        self._stack.addWidget(self._report)
 
         central = QWidget()
         row = QHBoxLayout(central)
@@ -102,8 +103,8 @@ class MainWindow(QMainWindow):
         self._update_theme_button()
         v.addWidget(self._theme_btn)
 
-        export = QPushButton("Export PDF…")
-        export.clicked.connect(self._report)
+        export = QPushButton("Report…")
+        export.clicked.connect(lambda: self._select_page(_PAGES.index("Report")))
         v.addWidget(export)
         return panel
 
@@ -115,6 +116,8 @@ class MainWindow(QMainWindow):
             self._compare.reload_configs()
         elif self._stack.currentWidget() is self._optimize:
             self._optimize.refresh_current()
+        elif self._stack.currentWidget() is self._report:
+            self._report.reload()
 
     # ---- design page ------------------------------------------------------------------------
     def _design_page(self) -> QWidget:
@@ -196,12 +199,6 @@ class MainWindow(QMainWindow):
 
     def _set_title(self, name: str) -> None:
         self.setWindowTitle(f"BrakeLab — {name}")
-
-    def _report(self) -> None:
-        path, _ = QFileDialog.getSaveFileName(self, "Export PDF report", f"{self.controller.config.name}.pdf", "PDF (*.pdf)")
-        if path:
-            self.controller.export_report(path)
-            QMessageBox.information(self, "Report exported", f"Saved to {path}")
 
 
 def _scroll(widget: QWidget) -> QScrollArea:

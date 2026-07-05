@@ -70,6 +70,17 @@ def apply_theme(app: QApplication, dark: bool) -> None:
     p.setColor(QPalette.PlaceholderText, placeholder)
     app.setPalette(p)
 
+    # A single, app-wide checkbox style so every tick box is clearly visible (not white-on-white):
+    # an empty bordered square when off, a filled square when on. Only the ``::indicator`` sub-control
+    # is styled, so widget text still follows the palette. Re-applied on every theme switch, so the
+    # fill tracks the mode — a darker grey on light, a lighter grey on dark.
+    check_fill = "#b8b8b8" if dark else "#4a4a4a"
+    app.setStyleSheet(
+        "QCheckBox::indicator { width: 13px; height: 13px; border: 1px solid #8a8a8a;"
+        " border-radius: 3px; }"
+        f"QCheckBox::indicator:checked {{ background: {check_fill}; border: 1px solid {check_fill}; }}"
+    )
+
 
 # ---- accent helpers --------------------------------------------------------------------------
 def card_bg() -> str:

@@ -19,7 +19,13 @@ _current: QFrame | None = None
 def show_popover(global_pos: QPoint, title: str, text: str, anchor: QWidget | None = None) -> None:
     global _current
     if _current is not None:
-        _current.close()
+        # The previous popover may already have auto-closed (Qt.Popup closes on an outside click) and
+        # been deleted by WA_DeleteOnClose, leaving a dangling Python wrapper — closing it then raises
+        # RuntimeError. Guard against that so re-opening an ⓘ never crashes.
+        try:
+            _current.close()
+        except RuntimeError:
+            pass
         _current = None
 
     frame = QFrame(None, Qt.Popup | Qt.FramelessWindowHint)

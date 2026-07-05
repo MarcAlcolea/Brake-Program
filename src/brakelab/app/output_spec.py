@@ -28,6 +28,7 @@ class Output:
 class OutputGroup:
     title: str
     outputs: tuple[Output, ...]
+    expanded: bool = True   # whether this section starts open in the Outputs panel
 
 
 def _o(label, unit, formula, description, getter) -> Output:
@@ -55,6 +56,7 @@ GROUPS: tuple[OutputGroup, ...] = (
             _o("Dynamic Rear Axle Load During Braking (W(r,dyn))", "N", "Static Rear - Delta W", "",
                lambda r, c: r.dynamics.dynamic_rear),
         ),
+        expanded=False,
     ),
     OutputGroup(
         "Phase 2 — Tire and Torque Requirements",
@@ -70,6 +72,7 @@ GROUPS: tuple[OutputGroup, ...] = (
                "Required torque for each rear caliper to produce for wheel",
                lambda r, c: r.torque.rear.torque_per_rotor),
         ),
+        expanded=False,
     ),
     OutputGroup(
         "Phase 3 — Caliper and Rotor Sizing",
@@ -88,6 +91,7 @@ GROUPS: tuple[OutputGroup, ...] = (
                "Important: components in hydraulic circuit have maximum rated pressure that must not be exceeded",
                lambda r, c: r.sizing.rear.line_pressure),
         ),
+        expanded=False,
     ),
     OutputGroup(
         "Phase 4 — Master Cylinder and Pedal Box",
@@ -112,6 +116,7 @@ GROUPS: tuple[OutputGroup, ...] = (
             _o("Force produced from pedal (F(pedal))", "N", "F(pedal) = F(driver) * PR",
                "Amount of force going into the balance bar", lambda r, c: r.hydraulics.pedal_force),
         ),
+        expanded=False,
     ),
     OutputGroup(
         "Pedal Travel",

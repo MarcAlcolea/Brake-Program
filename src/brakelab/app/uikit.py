@@ -6,7 +6,7 @@ rather than a scroll area inside another scroll area.
 
 from __future__ import annotations
 
-from PySide6.QtCore import Qt
+from PySide6.QtCore import QEvent, QObject, Qt
 from PySide6.QtWidgets import (
     QAbstractItemView,
     QComboBox,
@@ -17,6 +17,24 @@ from PySide6.QtWidgets import (
     QStyledItemDelegate,
     QTableWidget,
 )
+
+
+class _WheelGuard(QObject):
+    """Swallows wheel events on a combo box so scrolling the page never changes its value.
+
+    A combo under the pointer would otherwise cycle its selection on scroll — surprising for a unit
+    picker. We eat the wheel event so it neither changes the value nor is consumed here, letting the
+    surrounding scroll area move instead.
+    """
+
+    def eventFilter(self, obj, event) -> bool:  # noqa: N802 (Qt override)
+        if event.type() == QEvent.Wheel:
+            event.ignore()
+            return True
+        return False
+
+
+_wheel_guard = _WheelGuard()
 
 
 class _BoldCurrentDelegate(QStyledItemDelegate):
@@ -44,8 +62,11 @@ class _BoldCurrentDelegate(QStyledItemDelegate):
 
 
 def style_combo(combo: QComboBox) -> QComboBox:
-    """Show a combo's chosen option in bold in the popup instead of a grey highlight box."""
+    """Show a combo's chosen option in bold in the popup instead of a grey highlight box, and stop
+    the mouse wheel from changing the selection (it should only change on a click)."""
     combo.view().setItemDelegate(_BoldCurrentDelegate(combo.currentIndex, strip_hover=False, parent=combo))
+    combo.setFocusPolicy(Qt.StrongFocus)
+    combo.installEventFilter(_wheel_guard)
     return combo
 
 
@@ -61,6 +82,9 @@ def plain_table(headers: list[str], stretch_col: int = 0) -> QTableWidget:
     t.verticalHeader().setVisible(False)
     t.setEditTriggers(QAbstractItemView.NoEditTriggers)
     t.setSelectionMode(QAbstractItemView.NoSelection)
+    # No focus rectangle: clicking a cell must never draw a grey/box highlight — these are read-only
+    # display tables, and the only interactive cell (the ⓘ) still emits cellClicked without focus.
+    t.setFocusPolicy(Qt.NoFocus)
     t.setShowGrid(False)
     t.setFrameShape(QTableWidget.NoFrame)
     t.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)

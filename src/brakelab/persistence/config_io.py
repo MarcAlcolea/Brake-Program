@@ -52,6 +52,7 @@ def config_from_dict(data: dict[str, Any]) -> VehicleConfig:
         target_decel_g=data["target_decel_g"],
         notes=data.get("notes", ""),
         thermal=Thermal(**data.get("thermal", {})),
+        assumed_inputs=list(data.get("assumed_inputs", [])),
     )
 
 

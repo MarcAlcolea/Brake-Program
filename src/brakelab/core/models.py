@@ -165,3 +165,7 @@ class VehicleConfig:
     target_decel_g: float           # — design deceleration target [g]
     notes: str = ""
     thermal: Thermal = field(default_factory=Thermal)
+    assumed_inputs: list[str] = field(default_factory=list)
+    # ^ dotted input paths the user has flagged as "assumed" (e.g. "caliper.piston_travel").
+    #   Purely advisory: outputs that depend on an assumed input show a small warning. Saved with
+    #   the preset so the assumption travels with the design.

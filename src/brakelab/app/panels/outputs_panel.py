@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QColor
-from PySide6.QtWidgets import QTableWidget, QTableWidgetItem, QVBoxLayout, QWidget
+from PySide6.QtWidgets import QLabel, QTableWidget, QTableWidgetItem, QVBoxLayout, QWidget
 
 from ...core.results import BrakeResults
 from .. import theme
@@ -25,10 +25,12 @@ class OutputsPanel(QWidget):
         super().__init__(parent)
         self._controller = controller
         self._value_items: list[tuple[Output, QTableWidgetItem]] = []
+        self._label_items: dict[Output, QTableWidgetItem] = {}
         self._previous: dict[str, float] = {}
 
         if groups is None:
             groups = GROUPS
+        self._outputs = [o for g in groups for o in g.outputs]
 
         layout = QVBoxLayout(self)
         layout.setContentsMargins(2, 2, 2, 2)
@@ -38,7 +40,8 @@ class OutputsPanel(QWidget):
             row_output: dict[int, Output] = {}
             table.setRowCount(len(group.outputs))
             for row, output in enumerate(group.outputs):
-                table.setItem(row, 0, QTableWidgetItem(output.label))
+                label = QTableWidgetItem(output.label)
+                table.setItem(row, 0, label)
                 value = QTableWidgetItem("")
                 value.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
                 table.setItem(row, 1, value)
@@ -47,11 +50,19 @@ class OutputsPanel(QWidget):
                 info.setTextAlignment(Qt.AlignCenter)
                 table.setItem(row, 3, info)
                 self._value_items.append((output, value))
+                self._label_items[output] = label
                 row_output[row] = output
             table.cellClicked.connect(lambda r, c, t=table, m=row_output: self._info(t, r, c, m))
             fit_table(table)
-            layout.addWidget(CollapsibleSection(group.title, table, expanded=True))
+            layout.addWidget(CollapsibleSection(group.title, table, expanded=getattr(group, "expanded", True)))
+
+        self._legend = QLabel("*  depends on a value marked as assumed")
+        self._legend.setStyleSheet(f"color: {theme.muted_text()};")
+        self._legend.setVisible(False)
+        layout.addWidget(self._legend)
         layout.addStretch(1)
+
+        self._assumed_affected: set[Output] = set()
 
         controller.resultsChanged.connect(self.refresh)
         controller.configReplaced.connect(lambda _c: self._previous.clear())
@@ -66,10 +77,14 @@ class OutputsPanel(QWidget):
         body = f"Formula:  {output.formula}"
         if output.description:
             body += f"\n\n{output.description}"
+        if output in self._assumed_affected:
+            body += "\n\n⚠ This value depends on one or more inputs you marked as assumed."
         show_popover(pos, output.label, body)
 
     def refresh(self, results: BrakeResults) -> None:
         config = self._controller.config
+        self._assumed_affected = self._controller.assumed_affected(self._outputs)
+        self._legend.setVisible(bool(self._assumed_affected))
         for output, item in self._value_items:
             val = output.getter(results, config)
             decimals = 3 if abs(val) < 100 else 1
@@ -80,6 +95,16 @@ class OutputsPanel(QWidget):
             else:
                 item.setBackground(theme.increase_color() if val > prev else theme.decrease_color())
             self._previous[output.label] = val
+            self._mark_assumed(output)
+
+    def _mark_assumed(self, output: Output) -> None:
+        """Add/remove the small 'depends on an assumed value' marker on an output's label."""
+        label = self._label_items[output]
+        affected = output in self._assumed_affected
+        label.setText(f"{output.label} *" if affected else output.label)
+        label.setToolTip(
+            "Depends on one or more inputs marked as assumed." if affected else ""
+        )
 
     def reset_highlights(self) -> None:
         for _output, item in self._value_items:
