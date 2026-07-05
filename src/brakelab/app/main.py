@@ -41,6 +41,7 @@ from .panels.report_tab import ReportTab
 from .panels.requirements_panel import RequirementsPanel
 from .panels.shared_info_panel import SharedInfoPanel
 from .plots.plot_panel import SensitivityPanel
+from .uikit import muted
 from .widgets import ClickableLabel
 from . import forward_spec, thermal_spec
 
@@ -59,6 +60,7 @@ class MainWindow(QMainWindow):
         self._optimize = OptimizationTab(self.controller, library)
         self._report = ReportTab(self.controller, library, optimization_result=lambda: self._optimize.latest_result)
 
+        self._desc_labels: list[QLabel] = []
         self._stack = QStackedWidget()
         self._stack.addWidget(self._framed(
             "Design the brake system — choose components and check the pedal force and sizing needed "
@@ -133,7 +135,9 @@ class MainWindow(QMainWindow):
         v.setSpacing(3)
         label = QLabel(description)
         label.setWordWrap(True)
-        label.setStyleSheet(f"color: {theme.muted_text()};")
+        label.setFont(theme.body_font())     # keep Helvetica-Light explicitly
+        muted(label, theme.muted_text())     # colour via palette, so a theme toggle won't drop the font
+        self._desc_labels.append(label)
         v.addWidget(label)
         v.addWidget(widget, 1)
         return holder
@@ -266,6 +270,8 @@ class MainWindow(QMainWindow):
             self._thermal_outputs.reset_highlights()
             self._forward_outputs.reset_highlights()
             theme.style_checkboxes(self)  # re-apply the theme-aware indicator fill
+            for lbl in self._desc_labels:  # refresh the muted colour for the new theme (palette-based)
+                muted(lbl, theme.muted_text())
 
     def _set_title(self, name: str) -> None:
         self.setWindowTitle(f"BrakeLab — {name}")

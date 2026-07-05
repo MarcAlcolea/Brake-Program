@@ -22,7 +22,7 @@ from PySide6.QtWidgets import (
 from ...core.unit_convert import compatible_units, convert
 from .. import theme
 from ..controller import ProjectController
-from ..uikit import style_combo
+from ..uikit import muted, style_combo
 from ..widgets import CollapsibleSection, InfoButton
 
 
@@ -53,7 +53,7 @@ class InputPanel(QWidget):
             grid.setColumnStretch(1, 1)
             grid.setVerticalSpacing(5)
             header = QLabel("Assumed")
-            header.setStyleSheet(f"color: {theme.muted_text()};")
+            muted(header, theme.muted_text())
             hf = header.font()
             hf.setPointSize(max(8, hf.pointSize() - 2))
             header.setFont(hf)

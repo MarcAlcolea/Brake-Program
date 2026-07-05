@@ -14,7 +14,7 @@ from ...core.results import BrakeResults
 from .. import theme
 from ..controller import ProjectController
 from ..output_spec import GROUPS, Output
-from ..uikit import fit_table, plain_table
+from ..uikit import fit_table, muted, plain_table
 from ..widgets import CollapsibleSection, show_popover
 
 _CLEAR = QColor(0, 0, 0, 0)
@@ -57,7 +57,7 @@ class OutputsPanel(QWidget):
             layout.addWidget(CollapsibleSection(group.title, table, expanded=getattr(group, "expanded", True)))
 
         self._legend = QLabel("*  depends on a value marked as assumed")
-        self._legend.setStyleSheet(f"color: {theme.muted_text()};")
+        muted(self._legend, theme.muted_text())
         self._legend.setVisible(False)
         layout.addWidget(self._legend)
         layout.addStretch(1)

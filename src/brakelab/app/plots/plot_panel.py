@@ -24,7 +24,7 @@ from .. import theme
 from ..controller import ProjectController
 from ..field_spec import GROUPS as INPUT_GROUPS
 from ..output_spec import GROUPS as OUTPUT_GROUPS
-from ..uikit import style_combo
+from ..uikit import muted, style_combo
 
 # Outputs to surface first in the picker (most-used design targets), by label. Anything not listed
 # follows in spec order.
@@ -56,7 +56,7 @@ class SensitivityPanel(QWidget):
         hint = QLabel("Longer bars = focus there to move this number; bars to the right raise it, to "
                       "the left lower it.")
         hint.setWordWrap(True)
-        hint.setStyleSheet(f"color: {theme.muted_text()};")
+        muted(hint, theme.muted_text())
         layout.addWidget(hint)
 
         picker = QHBoxLayout()

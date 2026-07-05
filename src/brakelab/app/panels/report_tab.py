@@ -33,7 +33,7 @@ from ...persistence import ConfigLibrary
 from ...reporting import ReportOptions, build_report
 from .. import theme
 from ..controller import ProjectController
-from ..uikit import style_combo
+from ..uikit import muted, style_combo
 
 _CURRENT = "current"  # sentinel userData for "the live current design"
 _DETAIL = [("Extensive — every input and output", "extensive"),
@@ -90,7 +90,7 @@ class ReportTab(QWidget):
     def _hint(self, text: str) -> None:
         lab = QLabel(text)
         lab.setWordWrap(True)
-        lab.setStyleSheet(f"color: {theme.muted_text()};")
+        muted(lab, theme.muted_text())
         self._v.addWidget(lab)
 
     def _build_setup_and_detail(self) -> None:
@@ -171,7 +171,7 @@ class ReportTab(QWidget):
             self._v.addWidget(c)
         self._c_compare.toggled.connect(self._sync_compare_enabled)
         self._opt_note = QLabel("")
-        self._opt_note.setStyleSheet(f"color: {theme.muted_text()};")
+        muted(self._opt_note, theme.muted_text())
         self._v.addWidget(self._opt_note)
 
     def _build_compare_choices(self) -> None:

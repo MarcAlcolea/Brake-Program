@@ -7,6 +7,7 @@ rather than a scroll area inside another scroll area.
 from __future__ import annotations
 
 from PySide6.QtCore import QEvent, QObject, Qt
+from PySide6.QtGui import QColor, QPalette
 from PySide6.QtWidgets import (
     QAbstractItemView,
     QComboBox,
@@ -105,5 +106,12 @@ def fit_table(table: QTableWidget) -> None:
 
 
 def muted(label: QLabel, color: str) -> QLabel:
-    label.setStyleSheet(f"color: {color};")
+    """Grey a label's text via its palette, not a stylesheet.
+
+    A colour stylesheet engages Qt's style-sheet machinery, which on macOS drops the widget's
+    inherited Helvetica-Light font when the theme is re-applied (the text reverts to the system font
+    on a dark/light toggle). Setting the palette colour avoids that entirely."""
+    pal = label.palette()
+    pal.setColor(QPalette.WindowText, QColor(color))
+    label.setPalette(pal)
     return label
