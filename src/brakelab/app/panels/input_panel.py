@@ -31,7 +31,8 @@ def _fmt(value: float) -> str:
 
 
 class InputPanel(QWidget):
-    def __init__(self, controller: ProjectController, groups=None, parent: QWidget | None = None) -> None:
+    def __init__(self, controller: ProjectController, groups=None, expanded: bool = True,
+                 parent: QWidget | None = None) -> None:
         super().__init__(parent)
         self._controller = controller
         self._editors: dict[str, QWidget] = {}
@@ -66,7 +67,7 @@ class InputPanel(QWidget):
                 grid.addWidget(self._make_assumed_box(field), row, 3, Qt.AlignHCenter)
                 if field.note:
                     grid.addWidget(InfoButton(field.label, field.note), row, 4)
-            layout.addWidget(CollapsibleSection(group.title, content, expanded=True))
+            layout.addWidget(CollapsibleSection(group.title, content, expanded=expanded))
         layout.addStretch(1)
 
         controller.configReplaced.connect(self._reload_from_config)

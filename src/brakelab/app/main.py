@@ -229,19 +229,32 @@ class MainWindow(QMainWindow):
 
     # ---- thermal page -----------------------------------------------------------------------
     def _thermal_page(self) -> QWidget:
-        """Brake-rotor thermal calculations for ANSYS. Same layout as Main: inputs left, outputs
-        right, one shared config (so presets and shared values carry over automatically)."""
+        """Brake-rotor thermal for ANSYS. Inputs always on the left (required ones expanded, the
+        preview-graph inputs a collapsed dropdown below a divider); outputs on the right (ANSYS
+        values, then the optional temperature graph as a matching collapsed dropdown)."""
+        def note(text: str) -> QLabel:
+            lbl = QLabel(text)
+            lbl.setWordWrap(True)
+            muted(lbl, theme.muted_text())
+            self._desc_labels.append(lbl)  # keep muted colour correct on theme toggle
+            return lbl
+
+        def hline() -> QFrame:
+            line = QFrame()
+            line.setFrameShape(QFrame.HLine)
+            line.setStyleSheet(f"color: {theme.border_color()};")
+            return line
+
         left = QWidget()
         lv = QVBoxLayout(left)
         lv.setContentsMargins(4, 4, 4, 4)
         lv.addWidget(SharedInfoPanel(self.controller))
-        required = QLabel("Required inputs — these produce the ANSYS boundary-condition values shown "
-                          "on the right.")
-        required.setWordWrap(True)
-        muted(required, theme.muted_text())
-        self._desc_labels.append(required)  # keep muted colour correct on theme toggle
-        lv.addWidget(required)
+        lv.addWidget(note("Required inputs — these produce the ANSYS boundary-condition values on "
+                          "the right."))
         lv.addWidget(InputPanel(self.controller, groups=thermal_spec.INPUT_GROUPS))
+        lv.addWidget(hline())
+        lv.addWidget(note("Optional — these only shape the preview graph, not the ANSYS values."))
+        lv.addWidget(InputPanel(self.controller, groups=thermal_spec.SIM_INPUT_GROUPS, expanded=False))
         lv.addStretch(1)
         left_scroll = _scroll(left)
         left_scroll.setMinimumWidth(430)
@@ -252,7 +265,9 @@ class MainWindow(QMainWindow):
         rv = QVBoxLayout(right)
         rv.setContentsMargins(4, 4, 4, 4)
         rv.addWidget(self._thermal_outputs)
-        rv.addWidget(CollapsibleSection("Rotor Temperature Simulation", self._thermal_sim))
+        rv.addWidget(hline())
+        rv.addWidget(note("Preview only — a rough sanity check, not a substitute for ANSYS."))
+        rv.addWidget(CollapsibleSection("Rotor temperature graph", self._thermal_sim, expanded=False))
         rv.addStretch(1)
         right_scroll = _scroll(right)
 

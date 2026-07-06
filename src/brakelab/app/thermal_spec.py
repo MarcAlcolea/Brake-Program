@@ -74,7 +74,7 @@ of this tab."""
 # so the required and optional inputs never mix.
 SIM_INPUT_GROUPS: tuple[Group, ...] = (
     Group(
-        "Graph Inputs (optional — do not affect the ANSYS values)",
+        "Graph inputs",
         (
             Field("thermal.rotor_mass", "Rotor mass, one rotor (m(rotor))", "kg", "float",
                   0.05, 20, 3,
