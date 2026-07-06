@@ -56,7 +56,8 @@ jobs:
         env:
           BRAKELAB_SMOKE: "1"
           QT_QPA_PLATFORM: offscreen
-        run: "./dist/Brake Design Studio.app/Contents/MacOS/Brake Design Studio"
+        run: |
+          "./dist/Brake Design Studio.app/Contents/MacOS/Brake Design Studio"
 
       - name: Smoke-test the built app (Windows)
         if: runner.os == 'Windows'
