@@ -1,79 +1,93 @@
-"""Regenerate the Brake Design Studio app icons (icon.icns for macOS, icon.ico for Windows).
+"""Regenerate the Brake Design Studio app icons from the source artwork.
 
-The mark is a minimal monochrome brake rotor — a light ring with a drilled hole pattern on a
-near-black rounded square — drawn with Qt so no extra imaging dependency is needed.
+Source: ``packaging/icon_source.png`` (a rotor-and-caliper mark on a black rounded square). The
+solid-black exterior is made transparent with a border flood-fill — so the rounded-square shape
+floats as a proper macOS/Windows app icon — then resampled into every size the icon formats need.
+Interior artwork is never touched: only pixels connected to the image border are cleared, so the
+dark gaps inside the mark (which are the body colour, not pure black) stay opaque.
 
 Run from the repo root (any platform):
     python packaging/make_icon.py
-The .ico is always written; the .icns additionally needs macOS (uses the system `iconutil`).
-Both generated icons are committed, so this only needs re-running if the design changes.
+Writes icon.png (preview), src/brakelab/app/assets/icon.png (runtime window icon) and icon.ico
+always; icon.icns additionally needs macOS (uses the system ``iconutil``). All generated icons are
+committed, so this only needs re-running if ``icon_source.png`` changes.
 """
 
 from __future__ import annotations
 
-import math
 import os
 import shutil
 import struct
 import subprocess
 import sys
 import tempfile
+from collections import deque
 from pathlib import Path
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
-from PySide6.QtCore import QRectF, Qt
-from PySide6.QtGui import QColor, QImage, QPainter, QPainterPath
+import numpy as np
+from PySide6.QtCore import QBuffer, QIODevice, Qt
+from PySide6.QtGui import QImage
 from PySide6.QtWidgets import QApplication
 
 HERE = Path(__file__).resolve().parent
-BG = QColor("#141414")   # app dark background
-FG = QColor("#f5f5f5")   # near-white ring
+SOURCE = HERE / "icon_source.png"
+_BLACK_THRESHOLD = 14   # a pixel is "background black" if max(R,G,B) < this (body colour is ~19)
 
 
-def draw(size: int) -> QImage:
-    image = QImage(size, size, QImage.Format_ARGB32)
-    image.fill(Qt.transparent)
-    p = QPainter(image)
-    p.setRenderHint(QPainter.Antialiasing)
+def _load_base() -> QImage:
+    """Load the source and make its solid-black exterior transparent (border flood-fill)."""
+    src = QImage(str(SOURCE))
+    if src.isNull():
+        raise SystemExit(f"missing or unreadable source icon: {SOURCE}")
+    src = src.convertToFormat(QImage.Format.Format_RGBA8888)
+    w, h = src.width(), src.height()
 
-    s = float(size)
-    # Rounded-square plate (macOS-style, works fine on Windows too).
-    plate = QPainterPath()
-    margin, radius = s * 0.05, s * 0.22
-    plate.addRoundedRect(QRectF(margin, margin, s - 2 * margin, s - 2 * margin), radius, radius)
-    p.fillPath(plate, BG)
+    arr = np.frombuffer(src.constBits(), np.uint8).reshape((h, w, 4)).copy()
+    is_black = arr[:, :, :3].max(axis=2) < _BLACK_THRESHOLD
 
-    # Brake rotor: annulus with a circle of drilled holes, punched out of the plate colour.
-    cx = cy = s / 2
-    outer, inner = s * 0.30, s * 0.13
-    ring = QPainterPath()
-    ring.addEllipse(QRectF(cx - outer, cy - outer, 2 * outer, 2 * outer))
-    hub = QPainterPath()
-    hub.addEllipse(QRectF(cx - inner, cy - inner, 2 * inner, 2 * inner))
-    p.fillPath(ring.subtracted(hub), FG)
+    # Flood-fill the near-black region from every border pixel; only the connected exterior clears,
+    # so interior black outlines/gaps (if any) are preserved.
+    exterior = np.zeros((h, w), dtype=bool)
+    q: deque[tuple[int, int]] = deque()
+    for x in range(w):
+        for y in (0, h - 1):
+            if is_black[y, x] and not exterior[y, x]:
+                exterior[y, x] = True
+                q.append((y, x))
+    for y in range(h):
+        for x in (0, w - 1):
+            if is_black[y, x] and not exterior[y, x]:
+                exterior[y, x] = True
+                q.append((y, x))
+    while q:
+        y, x = q.popleft()
+        for ny, nx in ((y - 1, x), (y + 1, x), (y, x - 1), (y, x + 1)):
+            if 0 <= ny < h and 0 <= nx < w and is_black[ny, nx] and not exterior[ny, nx]:
+                exterior[ny, nx] = True
+                q.append((ny, nx))
 
-    p.setBrush(BG)
-    p.setPen(Qt.NoPen)
-    hole_r, orbit = s * 0.028, (outer + inner) / 2
-    for k in range(8):
-        a = math.tau * k / 8 + math.tau / 16
-        hx, hy = cx + orbit * math.cos(a), cy + orbit * math.sin(a)
-        p.drawEllipse(QRectF(hx - hole_r, hy - hole_r, 2 * hole_r, 2 * hole_r))
+    arr[exterior, 3] = 0
+    out = QImage(arr.tobytes(), w, h, QImage.Format.Format_RGBA8888).copy()
+    return out
 
-    # Hub bore.
-    bore = s * 0.045
-    p.drawEllipse(QRectF(cx - bore, cy - bore, 2 * bore, 2 * bore))
-    p.end()
-    return image
+
+_BASE: QImage | None = None
+
+
+def _base() -> QImage:
+    global _BASE
+    if _BASE is None:
+        _BASE = _load_base()
+    return _BASE
 
 
 def png_bytes(size: int) -> bytes:
-    from PySide6.QtCore import QBuffer, QIODevice
-
+    scaled = _base().scaled(size, size, Qt.KeepAspectRatio, Qt.SmoothTransformation)
     buf = QBuffer()
     buf.open(QIODevice.WriteOnly)
-    draw(size).save(buf, "PNG")
+    scaled.save(buf, "PNG")
     return bytes(buf.data())
 
 
