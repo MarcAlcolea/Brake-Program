@@ -504,7 +504,7 @@ def build_report(config: VehicleConfig, results: BrakeResults, path: str | Path,
     st = _styles()
 
     doc = SimpleDocTemplate(
-        str(path), pagesize=A4, title=options.title, author=options.author or "BrakeLab",
+        str(path), pagesize=A4, title=options.title, author=options.author or "Brake Design Studio",
         topMargin=18 * mm, bottomMargin=20 * mm, leftMargin=18 * mm, rightMargin=18 * mm,
     )
     story: list = []

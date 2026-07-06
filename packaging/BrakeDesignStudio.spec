@@ -1,8 +1,9 @@
-# PyInstaller spec for the standalone BrakeLab app (Windows .exe folder / macOS .app).
+# PyInstaller spec for the standalone Brake Design Studio app (Windows .exe folder / macOS .app).
 #
 # Build from the repo root:
-#     pyinstaller --noconfirm packaging/BrakeLab.spec
-# Output lands in dist/: `BrakeLab/BrakeLab.exe` on Windows, `BrakeLab.app` on macOS.
+#     pyinstaller --noconfirm packaging/BrakeDesignStudio.spec
+# Output lands in dist/: `Brake Design Studio/Brake Design Studio.exe` on Windows,
+# `Brake Design Studio.app` on macOS.
 # CI (.github/workflows/build.yml) runs exactly this on both platforms for every release.
 
 import sys
@@ -46,7 +47,7 @@ exe = EXE(
     pyz,
     a.scripts,
     exclude_binaries=True,
-    name="BrakeLab",
+    name="Brake Design Studio",
     debug=False,
     strip=False,
     upx=False,
@@ -60,18 +61,18 @@ coll = COLLECT(
     a.datas,
     strip=False,
     upx=False,
-    name="BrakeLab",
+    name="Brake Design Studio",
 )
 
 if sys.platform == "darwin":
     app = BUNDLE(
         coll,
-        name="BrakeLab.app",
+        name="Brake Design Studio.app",
         icon=icon,
-        bundle_identifier="eu.alcolea.brakelab",
+        bundle_identifier="eu.alcolea.brakedesignstudio",
         info_plist={
-            "CFBundleName": "BrakeLab",
-            "CFBundleDisplayName": "BrakeLab",
+            "CFBundleName": "Brake Design Studio",
+            "CFBundleDisplayName": "Brake Design Studio",
             "CFBundleShortVersionString": "1.0.0",
             "NSHighResolutionCapable": True,
             "NSPrincipalClass": "NSApplication",

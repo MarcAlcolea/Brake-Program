@@ -1,8 +1,8 @@
 @echo off
 setlocal
-REM BrakeLab from-source launcher (developers).
+REM Brake Design Studio from-source launcher (developers).
 REM Most people should NOT use this — download the ready-made app instead:
-REM   GitHub repo -> Releases -> BrakeLab-Windows.zip -> extract -> double-click BrakeLab.exe
+REM   GitHub repo -> Releases -> Brake-Design-Studio-Windows.zip -> extract -> Brake Design Studio.exe
 REM
 REM First run creates a local virtual environment (.venv) and installs dependencies;
 REM later runs just launch the app.
@@ -23,15 +23,15 @@ if not exist "%VENV_PY%" (
     "%VENV_PY%" -m pip install -e . || goto :error
 )
 
-echo Starting BrakeLab...
+echo Starting Brake Design Studio...
 "%VENV_PY%" -m brakelab
 if errorlevel 1 goto :error
 goto :end
 
 :error
 echo.
-echo BrakeLab could not start from source. The easy fix: download the ready-made app
-echo from the GitHub Releases page ^(BrakeLab-Windows.zip^) - it needs no Python at all.
+echo Brake Design Studio could not start from source. The easy fix: download the ready-made
+echo app from the GitHub Releases page ^(Brake-Design-Studio-Windows.zip^) - no Python needed.
 echo.
 echo To keep running from source instead, install 64-bit Python 3.11 or 3.12 and tick
 echo "Add python.exe to PATH" in the installer, then double-click run.bat again.

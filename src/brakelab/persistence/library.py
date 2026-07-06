@@ -19,13 +19,24 @@ from .config_io import load_config, save_config
 
 
 def app_data_dir() -> Path:
-    """Per-user application-data directory for BrakeLab."""
+    """Per-user application-data directory for Brake Design Studio.
+
+    Renamed from the old "BrakeLab" product name; if a folder under the old name exists and the new
+    one doesn't yet, it is migrated once so saved configurations carry over silently.
+    """
     if sys.platform == "darwin":
-        base = Path.home() / "Library" / "Application Support" / "BrakeLab"
+        root = Path.home() / "Library" / "Application Support"
     elif sys.platform.startswith("win"):
-        base = Path.home() / "AppData" / "Roaming" / "BrakeLab"
+        root = Path.home() / "AppData" / "Roaming"
     else:
-        base = Path.home() / ".local" / "share" / "BrakeLab"
+        root = Path.home() / ".local" / "share"
+    base = root / "Brake Design Studio"
+    legacy = root / "BrakeLab"
+    if not base.exists() and legacy.exists():
+        try:
+            legacy.rename(base)
+        except OSError:
+            pass
     return base
 
 

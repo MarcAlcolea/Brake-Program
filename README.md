@@ -1,4 +1,4 @@
-# FSAE Brake Design Tool (BrakeLab)
+# Brake Design Studio — FSAE Brake Design Tool
 
 A maintainable, extensible desktop application for Formula SAE brake system design — the standard
 engineering tool for our Controls team, replacing the legacy braking spreadsheet and the hand
@@ -33,7 +33,7 @@ packaging/     PyInstaller spec + icons for the standalone apps
 .github/       CI — tests on every push; app builds + Release on version tags
 ```
 
-## Running BrakeLab — just download the app
+## Running Brake Design Studio — just download the app
 
 **No Python, no terminal, no setup.** Go to this repo's
 **[Releases page](https://github.com/MarcAlcolea/Brake-Program/releases/latest)** and download the
@@ -41,8 +41,8 @@ zip for your machine:
 
 | You have | Download | Then |
 |---|---|---|
-| Windows | `BrakeLab-Windows.zip` | Extract, open the `BrakeLab` folder, double-click **`BrakeLab.exe`** |
-| Mac (Apple Silicon, 2020+) | `BrakeLab-macOS-AppleSilicon.zip` | Double-click the zip, then right-click **`BrakeLab.app` → Open** |
+| Windows | `Brake-Design-Studio-Windows.zip` | Extract, open the `Brake Design Studio` folder, double-click **`Brake Design Studio.exe`** |
+| Mac (Apple Silicon, 2020+) | `Brake-Design-Studio-macOS-AppleSilicon.zip` | Double-click the zip, then right-click **`Brake Design Studio.app` → Open** |
 
 First launch only, because the app isn't code-signed with a paid certificate:
 - **Windows** may show *"Windows protected your PC"* — click **More info → Run anyway**.
@@ -59,7 +59,7 @@ double-click launchers work, or from a terminal:
 ```
 python -m venv .venv                 # create a virtual environment (once)
 # activate it:  Windows -> .venv\Scripts\activate    macOS/Linux -> source .venv/bin/activate
-python -m pip install -e ".[dev]"    # install BrakeLab + dev extras (once)
+python -m pip install -e ".[dev]"    # install the app + dev extras (once)
 python -m brakelab                   # launch the GUI
 ```
 Headless / development commands:

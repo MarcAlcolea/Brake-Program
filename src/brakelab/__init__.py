@@ -1,4 +1,7 @@
-"""BrakeLab — FSAE brake system design tool.
+"""Brake Design Studio — FSAE brake system design tool.
+
+The importable Python package is still named ``brakelab`` (internal identifier); the product name
+shown to users is "Brake Design Studio".
 
 Layers (see docs/architecture.md):
   core        pure calculation engine (no GUI/IO)

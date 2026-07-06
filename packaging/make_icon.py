@@ -1,4 +1,4 @@
-"""Regenerate the BrakeLab app icons (icon.icns for macOS, icon.ico for Windows).
+"""Regenerate the Brake Design Studio app icons (icon.icns for macOS, icon.ico for Windows).
 
 The mark is a minimal monochrome brake rotor — a light ring with a drilled hole pattern on a
 near-black rounded square — drawn with Qt so no extra imaging dependency is needed.
@@ -97,7 +97,7 @@ def write_icns(path: Path) -> None:
         print("skipping .icns (needs macOS iconutil)")
         return
     with tempfile.TemporaryDirectory() as td:
-        iconset = Path(td) / "BrakeLab.iconset"
+        iconset = Path(td) / "BrakeDesignStudio.iconset"
         iconset.mkdir()
         for sz in (16, 32, 128, 256, 512):
             (iconset / f"icon_{sz}x{sz}.png").write_bytes(png_bytes(sz))

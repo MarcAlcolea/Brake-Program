@@ -118,7 +118,8 @@ the manufacturer datasheet** — some current entries are marked approximate.
 ## 7. Running on another computer (macOS or Windows)
 
 **Non-developers should not set up Python at all** — download the standalone app from the GitHub
-**Releases** page (`BrakeLab-Windows.zip` / `BrakeLab-macOS-AppleSilicon.zip`) and double-click it.
+**Releases** page (`Brake-Design-Studio-Windows.zip` / `Brake-Design-Studio-macOS-AppleSilicon.zip`)
+and double-click it.
 See §7b for how those apps are built and released.
 
 For development the app is standard Python + PySide6, so it runs anywhere Python does. It needs
@@ -152,14 +153,14 @@ python -m pytest          # the whole suite should pass
 python -m brakelab.cli configs/2026_baseline.json   # prints results headlessly
 ```
 
-## 7b. The standalone apps (how users actually get BrakeLab)
+## 7b. The standalone apps (how users actually get Brake Design Studio)
 
 `packaging/` holds everything needed to freeze the GUI into a double-click app with PyInstaller:
 
 - `launcher.py` — frozen-app entry point (also gives matplotlib a persistent font-cache dir).
-- `BrakeLab.spec` — one spec for both platforms; produces `dist/BrakeLab.app` on macOS and
-  `dist/BrakeLab/BrakeLab.exe` on Windows. Build locally with
-  `pyinstaller --noconfirm packaging/BrakeLab.spec`.
+- `BrakeDesignStudio.spec` — one spec for both platforms; produces `dist/Brake Design Studio.app`
+  on macOS and `dist/Brake Design Studio/Brake Design Studio.exe` on Windows. Build locally with
+  `pyinstaller --noconfirm packaging/BrakeDesignStudio.spec`.
 - `make_icon.py` — regenerates `icon.icns` / `icon.ico` (both are committed).
 
 CI (`.github/workflows/build.yml`) builds **both** platforms, runs the test suite, smoke-tests the
@@ -174,6 +175,7 @@ A few minutes later the Release with both zips appears on GitHub. (The workflow 
 from the Actions tab via "Run workflow" to get test builds as artifacts without releasing.)
 Release builds run only on tags because macOS runner minutes are billed 10x on private repos.
 
-Saved configurations live in a per-user folder (`~/Library/Application Support/BrakeLab` on macOS,
-`%APPDATA%\BrakeLab` on Windows). To move designs between machines, use **Export to folder…** in the
-app to write a JSON file and **Import…** on the other machine.
+Saved configurations live in a per-user folder (`~/Library/Application Support/Brake Design Studio`
+on macOS, `%APPDATA%\Brake Design Studio` on Windows; a folder left over from the old "BrakeLab"
+name is migrated automatically on first launch). To move designs between machines, use **Export to
+folder…** in the app to write a JSON file and **Import…** on the other machine.

@@ -1,4 +1,4 @@
-"""Entry script for the frozen (PyInstaller) BrakeLab app.
+"""Entry script for the frozen (PyInstaller) Brake Design Studio app.
 
 PyInstaller analyses this file to discover the whole application; at runtime it simply
 starts the GUI. Source-tree users run ``python -m brakelab`` instead.
