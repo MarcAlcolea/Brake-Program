@@ -9,9 +9,10 @@ The sidebar footer holds the light/dark toggle and PDF export. One simple, flat 
 
 from __future__ import annotations
 
+import os
 import sys
 
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, QTimer
 from PySide6.QtWidgets import (
     QApplication,
     QFrame,
@@ -298,6 +299,12 @@ def run(config: VehicleConfig | None = None) -> int:
     controller = ProjectController(config)
     window = MainWindow(controller, library)
     window.show()
+
+    # CI smoke test: BRAKELAB_SMOKE=1 quits shortly after the window is up, so the packaged
+    # app can be verified headless (exit 0 = launched, solved, and rendered without crashing).
+    if os.environ.get("BRAKELAB_SMOKE"):
+        QTimer.singleShot(2000, app.quit)
+
     return app.exec()
 
 
