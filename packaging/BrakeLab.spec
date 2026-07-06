@@ -15,7 +15,10 @@ a = Analysis(
     [str(ROOT / "packaging" / "launcher.py")],
     pathex=[SRC],
     binaries=[],
-    datas=[],
+    datas=[
+        # Runtime window/taskbar icon (app.main reads it relative to the module).
+        (str(ROOT / "src" / "brakelab" / "app" / "assets"), "brakelab/app/assets"),
+    ],
     hiddenimports=[
         # The Qt canvas is imported inside GUI modules; make sure the hook machinery sees it.
         "matplotlib.backends.backend_qtagg",

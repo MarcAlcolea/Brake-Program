@@ -11,8 +11,10 @@ from __future__ import annotations
 
 import os
 import sys
+from pathlib import Path
 
 from PySide6.QtCore import Qt, QTimer
+from PySide6.QtGui import QIcon
 from PySide6.QtWidgets import (
     QApplication,
     QFrame,
@@ -289,6 +291,11 @@ def _scroll(widget: QWidget) -> QScrollArea:
 def run(config: VehicleConfig | None = None) -> int:
     """Launch the GUI. Seeds the library on first run and opens the default preset."""
     app = QApplication.instance() or QApplication(sys.argv)
+    app.setApplicationName("BrakeLab")
+    app.setOrganizationName("BrakeLab")
+    icon_file = Path(__file__).resolve().parent / "assets" / "icon.png"
+    if icon_file.exists():
+        app.setWindowIcon(QIcon(str(icon_file)))
     theme.apply_theme(app, dark=False)
 
     library = ConfigLibrary()

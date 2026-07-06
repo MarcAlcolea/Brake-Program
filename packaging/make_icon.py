@@ -109,5 +109,7 @@ def write_icns(path: Path) -> None:
 if __name__ == "__main__":
     app = QApplication.instance() or QApplication([])
     (HERE / "icon.png").write_bytes(png_bytes(512))
+    # Runtime window/taskbar icon, shipped inside the package (see app.main.run).
+    (HERE.parent / "src" / "brakelab" / "app" / "assets" / "icon.png").write_bytes(png_bytes(256))
     write_ico(HERE / "icon.ico")
     write_icns(HERE / "icon.icns")
