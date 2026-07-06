@@ -1,0 +1,111 @@
+# Builds the double-click BrakeLab apps (Windows .exe, macOS .app) and publishes them
+# as a GitHub Release.
+#
+# Triggers:
+#   - pushing a version tag, e.g. `git tag v1.0.0 && git push origin v1.0.0`
+#     -> builds, smoke-tests, and publishes a Release with both zips attached
+#   - manual "Run workflow" button (workflow_dispatch)
+#     -> builds and smoke-tests only; zips are downloadable from the run's Artifacts
+#
+# Kept off plain pushes on purpose: macOS runner minutes cost 10x on private repos.
+name: Build apps
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            artifact: BrakeLab-Windows
+          - os: macos-latest
+            artifact: BrakeLab-macOS-AppleSilicon
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install BrakeLab + build tools
+        run: python -m pip install -e ".[dev]" pyinstaller
+
+      - name: Run tests
+        env:
+          QT_QPA_PLATFORM: offscreen
+        run: python -m pytest -q
+
+      - name: Build with PyInstaller
+        run: pyinstaller --noconfirm packaging/BrakeLab.spec
+
+      - name: Ad-hoc sign the app (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          xattr -cr dist/BrakeLab.app
+          codesign -s - --force --deep dist/BrakeLab.app
+
+      - name: Smoke-test the built app (macOS)
+        if: runner.os == 'macOS'
+        env:
+          BRAKELAB_SMOKE: "1"
+          QT_QPA_PLATFORM: offscreen
+        run: ./dist/BrakeLab.app/Contents/MacOS/BrakeLab
+
+      - name: Smoke-test the built app (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $env:BRAKELAB_SMOKE = "1"
+          $env:QT_QPA_PLATFORM = "offscreen"
+          $p = Start-Process -FilePath "dist/BrakeLab/BrakeLab.exe" -Wait -PassThru
+          if ($p.ExitCode -ne 0) { throw "Smoke test failed with exit code $($p.ExitCode)" }
+
+      - name: Zip (macOS)
+        if: runner.os == 'macOS'
+        run: ditto -c -k --keepParent dist/BrakeLab.app "${{ matrix.artifact }}.zip"
+
+      - name: Zip (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: Compress-Archive -Path dist/BrakeLab -DestinationPath "${{ matrix.artifact }}.zip"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact }}
+          path: ${{ matrix.artifact }}.zip
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          merge-multiple: true
+
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            BrakeLab-Windows.zip
+            BrakeLab-macOS-AppleSilicon.zip
+          fail_on_unmatched_files: true
+          body: |
+            Standalone BrakeLab apps — no Python or terminal needed.
+
+            **Windows:** download `BrakeLab-Windows.zip`, extract it, open the `BrakeLab`
+            folder and double-click `BrakeLab.exe`. If SmartScreen shows "Windows protected
+            your PC", click **More info → Run anyway** (first launch only).
+
+            **macOS (Apple Silicon):** download `BrakeLab-macOS-AppleSilicon.zip`, double-click
+            to extract, then right-click `BrakeLab.app` → **Open**. If macOS still blocks it,
+            allow it under **System Settings → Privacy & Security → Open Anyway** (first
+            launch only). Intel Macs: run from source, see the README.
