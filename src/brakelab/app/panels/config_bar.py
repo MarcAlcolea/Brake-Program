@@ -21,9 +21,19 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from ...persistence import ConfigLibrary, load_config, save_config
+from ...persistence import ConfigLibrary, config_to_dict, load_config, save_config
 from ..controller import ProjectController
 from ..uikit import style_combo
+
+_CUSTOM = "Custom"  # shown when the live config no longer matches its saved preset
+
+
+def _config_equal(a, b) -> bool:
+    """Two configs are 'the same preset' if everything but the display name matches."""
+    da, db = config_to_dict(a), config_to_dict(b)
+    da.pop("name", None)
+    db.pop("name", None)
+    return da == db
 
 
 class ConfigBar(QWidget):
@@ -66,24 +76,48 @@ class ConfigBar(QWidget):
         self._reload_combo(select=controller.config.name)
         # Keep the dropdown in sync when the config is replaced elsewhere (e.g. the other tab's bar).
         controller.configReplaced.connect(lambda c: self._reload_combo(select=c.name))
+        # Editing any input diverges the config from its saved preset — reflect that as "Custom".
+        controller.resultsChanged.connect(lambda _r: self._sync_selection())
 
     def _reload_combo(self, select: str | None = None) -> None:
         self._combo.blockSignals(True)
         self._combo.clear()
         self._combo.addItems(self._library.names())
+        self._combo.addItem(_CUSTOM)
         if select:
             i = self._combo.findText(select)
             if i >= 0:
                 self._combo.setCurrentIndex(i)
         self._combo.blockSignals(False)
 
+    def _sync_selection(self) -> None:
+        """Show the preset name while the config matches it; switch to 'Custom' once it's edited."""
+        name = self._controller.config.name
+        target = name if self._matches_saved(name) else _CUSTOM
+        self._combo.blockSignals(True)
+        i = self._combo.findText(target)
+        self._combo.setCurrentIndex(i if i >= 0 else self._combo.findText(_CUSTOM))
+        self._combo.blockSignals(False)
+
+    def _matches_saved(self, name: str) -> bool:
+        if not name or not self._library.exists(name):
+            return False
+        try:
+            return _config_equal(self._controller.config, self._library.load(name))
+        except Exception:  # noqa: BLE001 — a bad/missing file just means "not matching"
+            return False
+
     def _on_selected(self, name: str) -> None:
-        if name and name != self._controller.config.name:
+        if not name or name == _CUSTOM:
+            return  # "Custom" is a status, not a loadable preset
+        # Load when switching presets, or when re-picking the current one to discard unsaved edits.
+        if name != self._controller.config.name or not self._matches_saved(name):
             self._controller.replace_config(self._library.load(name))
 
     def _save(self) -> None:
         self._library.save(self._controller.config)
-        self._reload_combo(select=self._controller.config.name)
+        # Notify both tabs' bars so they refresh their list and drop the "Custom" state together.
+        self._controller.configReplaced.emit(self._controller.config)
 
     def _save_as(self) -> None:
         name, ok = QInputDialog.getText(self, "Save As", "New preset name:", text=self._controller.config.name)

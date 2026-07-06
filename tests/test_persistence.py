@@ -13,6 +13,27 @@ def test_dict_round_trip():
     assert restored == original
 
 
+def test_name_independent_equality_backs_the_custom_indicator():
+    # The config bar shows "Custom" by comparing everything but the display name; editing any
+    # input must break that equality, while a name change alone must not.
+    import copy
+
+    saved = rc.outboarded_x2()
+
+    def body(cfg):
+        d = config_to_dict(cfg)
+        d.pop("name", None)
+        return d
+
+    renamed = copy.deepcopy(saved)
+    renamed.name = "My Copy"
+    assert body(renamed) == body(saved)  # rename alone → still the same preset
+
+    edited = copy.deepcopy(saved)
+    edited.mass.total_mass += 5.0
+    assert body(edited) != body(saved)   # any input edit → diverges → "Custom"
+
+
 def test_file_round_trip(tmp_path):
     original = rc.inboarded_x1()
     path = tmp_path / "car.json"
