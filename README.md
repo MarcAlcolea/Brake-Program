@@ -4,10 +4,11 @@ A maintainable, extensible desktop application for Formula SAE brake system desi
 engineering tool for our Controls team, replacing the legacy braking spreadsheet and the hand
 calculations for brake-rotor thermal analysis.
 
-## Status — v1 implemented
-A verified calculation engine, desktop GUI, save/load, PDF reports, and an extensibility seam with
-one working analysis. 20 tests pass. Advanced analyses (optimization, Monte Carlo, telemetry, full
-transient thermal) are deferred but their seams are in place.
+## Status
+A verified calculation engine, desktop GUI (design, forward simulation, thermal, optimization,
+comparison, sensitivity, PDF reports), save/load presets, a component catalog, and a transient
+rotor-temperature simulation with ANSYS-ready CSV export. Distributed as standalone Windows/macOS
+apps built by CI. Remaining seams: Monte Carlo, telemetry comparison.
 
 - [`docs/calculation_audit.md`](docs/calculation_audit.md) — every spreadsheet/thermal calculation
   checked, the bugs found (B1 static-load swap, B2 missing ×2 on the inboard rear, …), and the

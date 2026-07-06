@@ -14,13 +14,12 @@ without touching the core:
    possible refinement.
 3. [done, core] Peak heat flux ``q = P_rotor / A_swept`` and a speed-dependent film coefficient
    ``h = a + b v``.
-4. [future, here] A lumped-capacitance transient temperature model over a duty cycle, and export of
-   ANSYS-ready heat-flux / film-coefficient tabular data as files.
+4. [done, simulation.py] A lumped-capacitance transient temperature model over a duty cycle, and
+   export of ANSYS-ready heat-flux / film-coefficient tabular data as CSV.
 
-A ``materials`` library (1018 steel, 4130 chromoly: density, conductivity, specific heat,
-emissivity, E, yield, CTE) will seed step 4 — values are captured in ``docs/calculation_audit.md``.
+Possible next step: a ``materials`` library (1018 steel, 4130 chromoly: density, conductivity,
+specific heat, emissivity, E, yield, CTE) so rotor material is a dropdown — values are captured in
+``docs/calculation_audit.md``.
 """
 
 from __future__ import annotations
-
-# Intentionally not implemented in v1. See module docstring and docs/implementation_plan.md.

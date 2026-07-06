@@ -44,8 +44,9 @@ from .panels.report_tab import ReportTab
 from .panels.requirements_panel import RequirementsPanel
 from .panels.shared_info_panel import SharedInfoPanel
 from .plots.plot_panel import SensitivityPanel
+from .panels.thermal_sim_panel import ThermalSimPanel
 from .uikit import muted
-from .widgets import ClickableLabel
+from .widgets import ClickableLabel, CollapsibleSection
 from . import forward_spec, thermal_spec
 
 _PAGES = ["Main", "Simulator", "Thermal", "Optimize", "Compare", "Sensitivity", "Report"]
@@ -72,8 +73,8 @@ class MainWindow(QMainWindow):
             "Simulate real braking — from a driver pedal force, see the actual deceleration and "
             "whether either axle locks up.", self._simulator_page()))
         self._stack.addWidget(self._framed(
-            "Rotor thermal inputs — compute the heat-flux and film-coefficient values for an ANSYS "
-            "transient thermal study.", self._thermal_page()))
+            "Rotor thermal — compute the ANSYS heat-flux and film-coefficient inputs, and simulate "
+            "rotor temperature over repeated stops.", self._thermal_page()))
         self._stack.addWidget(self._framed(
             "Optimize the setup — search component and tuning values that best meet your objectives "
             "and constraints.", self._optimize))
@@ -240,10 +241,12 @@ class MainWindow(QMainWindow):
         left_scroll.setMinimumWidth(430)
 
         self._thermal_outputs = OutputsPanel(self.controller, groups=thermal_spec.OUTPUT_GROUPS)
+        self._thermal_sim = ThermalSimPanel(self.controller)
         right = QWidget()
         rv = QVBoxLayout(right)
         rv.setContentsMargins(4, 4, 4, 4)
         rv.addWidget(self._thermal_outputs)
+        rv.addWidget(CollapsibleSection("Rotor Temperature Simulation", self._thermal_sim))
         rv.addStretch(1)
         right_scroll = _scroll(right)
 
@@ -272,6 +275,7 @@ class MainWindow(QMainWindow):
             self._outputs.reset_highlights()
             self._thermal_outputs.reset_highlights()
             self._forward_outputs.reset_highlights()
+            self._thermal_sim.refresh()  # redraw the chart in the new theme's colours
             theme.style_checkboxes(self)  # re-apply the theme-aware indicator fill
             for lbl in self._desc_labels:  # refresh the muted colour for the new theme (palette-based)
                 muted(lbl, theme.muted_text())

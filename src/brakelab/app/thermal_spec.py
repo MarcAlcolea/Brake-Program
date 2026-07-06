@@ -61,6 +61,28 @@ INPUT_GROUPS: tuple[Group, ...] = (
                   "speed."),
         ),
     ),
+    Group(
+        "Transient Simulation",
+        (
+            Field("thermal.rotor_mass", "Rotor mass, one rotor (m(rotor))", "kg", "float",
+                  0.05, 20, 3,
+                  "Thermal mass of a single rotor. The default 1.3 kg is an assumption — weigh the "
+                  "actual part; peak temperature scales directly with it."),
+            Field("thermal.rotor_specific_heat", "Rotor specific heat (c(p))", "J/kg·K", "float",
+                  100, 2000, 0,
+                  "486 J/kg·K for 1018 steel (see the materials data in the calculation audit); "
+                  "~460–500 for most rotor steels and cast iron."),
+            Field("thermal.emissivity", "Surface emissivity (ε)", "-", "float", 0, 1, 2,
+                  "Grey-body radiation factor. ~0.28 for machined steel, much higher (0.6–0.9) once "
+                  "the surface oxidises. Radiation only matters at high rotor temperatures."),
+            Field("thermal.n_stops", "Stops in duty cycle (N(stops))", "-", "int", 1, 200, 0,
+                  "How many braking events the simulation strings together, each followed by the "
+                  "cooling step. Enough stops shows the saturated (worst-case) temperature."),
+            Field("thermal.cool_speed", "Car speed while cooling (v(cool))", "m/s", "float",
+                  0, 60, 1,
+                  "Speed used for the convection estimate h = a + b·v between braking events."),
+        ),
+    ),
 )
 
 

@@ -166,6 +166,13 @@ class Thermal:
     film_intercept: float = 10.0     # W/m²·K — a in the estimate h = a + b·v
     film_slope: float = 3.0          # (W/m²·K)/(m/s) — b in the estimate h = a + b·v
 
+    # --- transient duty-cycle simulation (see brakelab/thermal/simulation.py) -----------------
+    rotor_mass: float = 1.3          # kg — mass of ONE rotor (approximate default; weigh the part)
+    rotor_specific_heat: float = 486.0  # J/kg·K — 1018 steel (docs/calculation_audit.md materials)
+    emissivity: float = 0.28         # — machined-steel surface (rises a lot once oxidised)
+    n_stops: int = 10                # — braking events in the simulated duty cycle
+    cool_speed: float = 20.0         # m/s — car speed while cooling between stops (drives h)
+
 
 @dataclass
 class VehicleConfig:
