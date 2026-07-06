@@ -15,7 +15,7 @@ import sys
 from pathlib import Path
 
 from ..core.models import VehicleConfig
-from .config_io import config_from_dict, load_config, save_config
+from .config_io import load_config, save_config
 
 
 def app_data_dir() -> Path:

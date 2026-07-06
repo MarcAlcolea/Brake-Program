@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from brakelab.components import catalog
-from brakelab.core import BrakeEngine
 from brakelab.core.attrpath import get_by_path
 from brakelab import reference_configs as rc
 from brakelab.optimization import (

@@ -7,7 +7,6 @@ sizing asserts the *corrected* values (audit B2 — the sheet dropped the factor
 
 from __future__ import annotations
 
-import math
 
 import pytest
 

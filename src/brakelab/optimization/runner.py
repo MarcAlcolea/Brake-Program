@@ -18,7 +18,7 @@ from ..core.engine import BrakeEngine
 from ..core.models import VehicleConfig
 from .algorithms import Evaluation, get_optimizer
 from .metrics import METRICS, all_available_keys
-from .problem import Constraint, Objective, Op, OptimizationProblem, Sense
+from .problem import Constraint, Op, OptimizationProblem, Sense
 
 
 @dataclass

@@ -15,7 +15,7 @@ definition), and the CG distances are back-derived for reporting:
 
 from __future__ import annotations
 
-from .models import MassProperties, Tires
+from .models import MassProperties
 from .results import DynamicsResult
 from .units import GRAVITY
 

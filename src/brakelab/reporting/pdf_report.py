@@ -252,9 +252,9 @@ def _full_inputs(story: list, config: VehicleConfig, st) -> None:
     for group in INPUT_GROUPS:
         _subheading(story, group.title, st)
         rows = [["Parameter", "Value", "Unit"]]
-        for field in group.fields:
-            label = field.label + (" *" if field.path in assumed else "")
-            rows.append([label, _field_value(config, field), _unit_text(field.unit)])
+        for spec in group.fields:
+            label = spec.label + (" *" if spec.path in assumed else "")
+            rows.append([label, _field_value(config, spec), _unit_text(spec.unit)])
         story.append(_data_table(rows, col_widths=[95 * mm, 30 * mm, 25 * mm], compact=True))
         story.append(Spacer(1, 2 * mm))
     story.append(Spacer(1, 3 * mm))

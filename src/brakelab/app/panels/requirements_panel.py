@@ -6,7 +6,7 @@ opens its note in a popover next to the icon.
 
 from __future__ import annotations
 
-from PySide6.QtWidgets import QLabel, QTableWidget, QTableWidgetItem, QVBoxLayout, QWidget
+from PySide6.QtWidgets import QLabel, QTableWidgetItem, QVBoxLayout, QWidget
 
 from ...core.results import BrakeResults, Requirement
 from .. import theme

@@ -15,7 +15,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from .field_spec import Field, Group
-from .output_spec import Output, OutputGroup, _o
+from .output_spec import OutputGroup, _o
 
 INPUT_GROUPS: tuple[Group, ...] = (
     Group(
