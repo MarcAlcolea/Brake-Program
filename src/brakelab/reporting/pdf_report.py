@@ -378,6 +378,28 @@ def _thermal_section(story: list, config: VehicleConfig, results: BrakeResults, 
         ["Film coefficient at brake end", _num(th.film_coeff_end, 1), "W/m²·K"],
     ]
     story.append(_data_table(rows, col_widths=[80 * mm, 40 * mm, 25 * mm]))
+    story.append(Spacer(1, 3 * mm))
+
+    # Transient duty-cycle simulation (lumped capacitance; see brakelab/thermal/simulation.py).
+    try:
+        from ..thermal import simulate_temperature
+
+        sim = simulate_temperature(config)
+    except Exception:  # noqa: BLE001 — the report must not die on odd thermal inputs
+        sim = None
+    if sim is not None:
+        _subheading(
+            story,
+            f"Transient simulation — {t.n_stops} stops of {_num(t.brake_time, 1)} s, "
+            f"{_num(t.cool_time, 1)} s cooling between", st)
+        sim_rows = [
+            ["Quantity", "Front rotor", "Rear rotor", "Unit"],
+            ["Peak temperature", _num(sim.peak_front, 1), _num(sim.peak_rear, 1), "°C"],
+            ["End of duty cycle", _num(sim.final_front, 1), _num(sim.final_rear, 1), "°C"],
+            ["Rise per stop (no cooling)",
+             _num(sim.adiabatic_rise_front, 1), _num(sim.adiabatic_rise_rear, 1), "°C"],
+        ]
+        story.append(_data_table(sim_rows, col_widths=[60 * mm, 30 * mm, 30 * mm, 25 * mm]))
     story.append(Spacer(1, 5 * mm))
 
 
