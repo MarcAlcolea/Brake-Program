@@ -117,8 +117,12 @@ the manufacturer datasheet** — some current entries are marked approximate.
 
 ## 7. Running on another computer (macOS or Windows)
 
-The app is standard Python + PySide6, so it runs anywhere Python does. It needs **Python 3.9+** and
-the packages in `requirements.txt`.
+**Non-developers should not set up Python at all** — download the standalone app from the GitHub
+**Releases** page (`BrakeLab-Windows.zip` / `BrakeLab-macOS-AppleSilicon.zip`) and double-click it.
+See §7b for how those apps are built and released.
+
+For development the app is standard Python + PySide6, so it runs anywhere Python does. It needs
+**Python 3.9+**; all dependencies come from `pyproject.toml`.
 
 ### Any machine (recommended: a virtual environment)
 ```
@@ -126,7 +130,7 @@ the packages in `requirements.txt`.
 python3 -m venv .venv                 # Windows: py -m venv .venv
 source .venv/bin/activate             # Windows: .venv\Scripts\activate
 python -m pip install --upgrade pip
-python -m pip install -r requirements.txt -e .
+python -m pip install -e ".[dev]"     # app + test/dev extras
 python -m brakelab                    # launches the GUI
 ```
 On most machines the virtualenv is the cleanest option and the above is all you need.
@@ -144,9 +148,31 @@ fall back to `run.command` only if the GUI fails to launch with a Qt-plugin erro
 
 ### Verifying an install
 ```
-python -m pytest          # 34 tests should pass
+python -m pytest          # the whole suite should pass
 python -m brakelab.cli configs/2026_baseline.json   # prints results headlessly
 ```
+
+## 7b. The standalone apps (how users actually get BrakeLab)
+
+`packaging/` holds everything needed to freeze the GUI into a double-click app with PyInstaller:
+
+- `launcher.py` — frozen-app entry point (also gives matplotlib a persistent font-cache dir).
+- `BrakeLab.spec` — one spec for both platforms; produces `dist/BrakeLab.app` on macOS and
+  `dist/BrakeLab/BrakeLab.exe` on Windows. Build locally with
+  `pyinstaller --noconfirm packaging/BrakeLab.spec`.
+- `make_icon.py` — regenerates `icon.icns` / `icon.ico` (both are committed).
+
+CI (`.github/workflows/build.yml`) builds **both** platforms, runs the test suite, smoke-tests the
+frozen app (`BRAKELAB_SMOKE=1` auto-quits after launch), and attaches the zips to a GitHub Release.
+
+**To publish a new release:** tag the commit and push the tag —
+```
+git tag v1.0.1
+git push origin v1.0.1
+```
+A few minutes later the Release with both zips appears on GitHub. (The workflow can also be run
+from the Actions tab via "Run workflow" to get test builds as artifacts without releasing.)
+Release builds run only on tags because macOS runner minutes are billed 10x on private repos.
 
 Saved configurations live in a per-user folder (`~/Library/Application Support/BrakeLab` on macOS,
 `%APPDATA%\BrakeLab` on Windows). To move designs between machines, use **Export to folder…** in the

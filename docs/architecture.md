@@ -160,7 +160,9 @@ New feature = new `Analysis` subclass + one panel. Core untouched.
 
 ```
 Brake Program/
-├─ README.md · pyproject.toml · requirements.txt · .gitignore
+├─ README.md · pyproject.toml · .gitignore
+├─ packaging/       PyInstaller spec + icons (standalone Windows/macOS apps)
+├─ .github/         CI: tests on push, app builds + GitHub Release on version tags
 ├─ docs/            calculation_audit.md · architecture.md · (physics_reference.md)
 ├─ reference/       original xlsx + thermal docx (source of truth for validation)
 ├─ configs/         saved VehicleConfig JSON (e.g. 2026_baseline.json)

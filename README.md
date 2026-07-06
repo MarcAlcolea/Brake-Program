@@ -28,39 +28,43 @@ src/brakelab/
   reporting/   PDF report generation
   app/         PySide6 GUI (controller, panels, plot, main)
 tests/         golden-value + property + round-trip tests
+packaging/     PyInstaller spec + icons for the standalone apps
+.github/       CI — tests on every push; app builds + Release on version tags
 ```
 
-## Running BrakeLab
+## Running BrakeLab — just download the app
 
-You need **Python 3.11 or 3.12 (64-bit)**. Get the code first — download the ZIP from GitHub and
-extract it, or `git clone https://github.com/MarcAlcolea/Brake-Program.git`.
+**No Python, no terminal, no setup.** Go to this repo's
+**[Releases page](https://github.com/MarcAlcolea/Brake-Program/releases/latest)** and download the
+zip for your machine:
 
-### Windows — the easy way
-Double-click **`run.bat`**. The first run creates a local virtual environment and installs
-everything (takes a minute); every run after that just launches the GUI.
+| You have | Download | Then |
+|---|---|---|
+| Windows | `BrakeLab-Windows.zip` | Extract, open the `BrakeLab` folder, double-click **`BrakeLab.exe`** |
+| Mac (Apple Silicon, 2020+) | `BrakeLab-macOS-AppleSilicon.zip` | Double-click the zip, then right-click **`BrakeLab.app` → Open** |
 
-> If Windows warns about python not being found, install it from
-> [python.org](https://www.python.org/downloads/) and **tick "Add python.exe to PATH"** on the first
-> screen, then double-click `run.bat` again.
+First launch only, because the app isn't code-signed with a paid certificate:
+- **Windows** may show *"Windows protected your PC"* — click **More info → Run anyway**.
+- **macOS** may block the app — right-click → **Open**, or allow it under
+  **System Settings → Privacy & Security → Open Anyway**.
 
-### macOS — the easy way
-Double-click **`run.command`** in Finder, or from a terminal in this folder:
-```
-./run.command
-```
+After that it opens like any normal application. Saved setups live in your user account
+(not in the app folder), so replacing the app with a newer version keeps your configurations.
 
-### Any platform — from a terminal
+### Running from source (developers)
+
+With **Python 3.9+** and the repo cloned: `run.bat` (Windows) or `run.command` (macOS)
+double-click launchers work, or from a terminal:
 ```
 python -m venv .venv                 # create a virtual environment (once)
 # activate it:  Windows -> .venv\Scripts\activate    macOS/Linux -> source .venv/bin/activate
-python -m pip install -e .           # install BrakeLab + its dependencies (once)
+python -m pip install -e ".[dev]"    # install BrakeLab + dev extras (once)
 python -m brakelab                   # launch the GUI
 ```
 Headless / development commands:
 ```
 python -m brakelab.cli configs/2026_baseline.json                    # print results, no GUI
 python -m brakelab.cli configs/2026_baseline.json --report out.pdf   # + PDF report
-python -m pip install -e ".[dev]"                                    # add the test/dev extras
 python -m pytest                                                     # run the test suite
 ```
 
@@ -68,6 +72,12 @@ python -m pytest                                                     # run the t
 > plugins (*"Could not find the Qt platform plugin cocoa"*). If that happens, use `run.command`
 > (it uses the system Python), or install a full Python from [python.org](https://www.python.org)
 > and use a venv there.
+
+### Releasing a new version
+
+Tag and push: `git tag v1.0.1 && git push origin v1.0.1`. GitHub Actions builds both apps, runs
+the test suite, smoke-tests the frozen apps, and publishes the Release automatically
+(see [docs/developer_guide.md](docs/developer_guide.md) §7b).
 
 ## Design principles
 1. **Correctness first** — physics lives in a pure, fully-tested core validated against
