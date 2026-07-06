@@ -235,6 +235,12 @@ class MainWindow(QMainWindow):
         lv = QVBoxLayout(left)
         lv.setContentsMargins(4, 4, 4, 4)
         lv.addWidget(SharedInfoPanel(self.controller))
+        required = QLabel("Required inputs — these produce the ANSYS boundary-condition values shown "
+                          "on the right.")
+        required.setWordWrap(True)
+        muted(required, theme.muted_text())
+        self._desc_labels.append(required)  # keep muted colour correct on theme toggle
+        lv.addWidget(required)
         lv.addWidget(InputPanel(self.controller, groups=thermal_spec.INPUT_GROUPS))
         lv.addStretch(1)
         left_scroll = _scroll(left)
@@ -281,7 +287,7 @@ class MainWindow(QMainWindow):
                 muted(lbl, theme.muted_text())
 
     def _set_title(self, name: str) -> None:
-        self.setWindowTitle(f"BrakeLab — {name}")
+        self.setWindowTitle(f"Brake Design Studio — {name}")
 
 
 def _scroll(widget: QWidget) -> QScrollArea:
@@ -295,8 +301,8 @@ def _scroll(widget: QWidget) -> QScrollArea:
 def run(config: VehicleConfig | None = None) -> int:
     """Launch the GUI. Seeds the library on first run and opens the default preset."""
     app = QApplication.instance() or QApplication(sys.argv)
-    app.setApplicationName("BrakeLab")
-    app.setOrganizationName("BrakeLab")
+    app.setApplicationName("Brake Design Studio")
+    app.setOrganizationName("Brake Design Studio")
     icon_file = Path(__file__).resolve().parent / "assets" / "icon.png"
     if icon_file.exists():
         app.setWindowIcon(QIcon(str(icon_file)))

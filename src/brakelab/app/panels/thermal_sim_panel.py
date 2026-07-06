@@ -25,9 +25,10 @@ from PySide6.QtWidgets import (
 matplotlib.rcParams["font.family"] = ["Helvetica", "Helvetica Neue", "Arial", "DejaVu Sans"]
 
 from ...thermal import ThermalSimResult, simulate_temperature, write_ansys_csv
-from .. import theme
+from .. import theme, thermal_spec
 from ..controller import ProjectController
 from ..uikit import fit_table, muted, plain_table
+from .input_panel import InputPanel
 
 
 class ThermalSimPanel(QWidget):
@@ -43,13 +44,19 @@ class ThermalSimPanel(QWidget):
         layout.setSpacing(6)
 
         self._hint = QLabel(
-            "Lumped-capacitance model: one thermal mass per rotor, heated by each stop and cooled "
-            "by convection (h = a + b·v) and radiation between stops. Uses the pad swept area for "
-            "surface exchange, so temperatures are slightly conservative."
+            "A rough sanity-check preview, not a substitute for ANSYS: a lumped-capacitance model "
+            "(one temperature per rotor) heated by each stop and cooled by convection (h = a + b·v) "
+            "and radiation. Use it to check ANSYS is in the right ballpark and whether the rotor "
+            "saturates over a stint. The inputs below feed only this graph — they do not change the "
+            "ANSYS boundary-condition values."
         )
         self._hint.setWordWrap(True)
         muted(self._hint, theme.muted_text())
         layout.addWidget(self._hint)
+
+        # Graph-only inputs, rendered here (not in the required ANSYS input column) so the two never
+        # mix. Editing them re-solves the shared config, which triggers refresh() via resultsChanged.
+        layout.addWidget(InputPanel(controller, groups=thermal_spec.SIM_INPUT_GROUPS))
 
         self._table = plain_table(["", "Front rotor", "Rear rotor"])
         layout.addWidget(self._table)
@@ -130,7 +137,7 @@ class ThermalSimPanel(QWidget):
     # ---- export ---------------------------------------------------------------------------------
     def _export_csv(self) -> None:
         if self._result is None:
-            QMessageBox.warning(self, "BrakeLab", "Nothing to export — fix the inputs first.")
+            QMessageBox.warning(self, "Brake Design Studio", "Nothing to export — fix the inputs first.")
             return
         name = self._controller.config.name.replace(" ", "_") or "config"
         path, _ = QFileDialog.getSaveFileName(

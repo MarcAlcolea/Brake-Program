@@ -61,26 +61,40 @@ INPUT_GROUPS: tuple[Group, ...] = (
                   "speed."),
         ),
     ),
+)
+"""``INPUT_GROUPS`` — the **required** thermal inputs. These, with the shared Main-tab values, produce
+the ANSYS boundary-condition outputs (heat flux, film coefficients). They are the actual deliverable
+of this tab."""
+
+
+# Inputs used ONLY by the in-app temperature-preview graph (brakelab.thermal.simulation), never by
+# the ANSYS boundary-condition calculation. ANSYS gets rotor material and geometry from its own
+# model, so you never type these into ANSYS — they exist purely to draw the rough sanity-check graph.
+# Kept out of INPUT_GROUPS on purpose and rendered inside the simulation section (see ThermalSimPanel)
+# so the required and optional inputs never mix.
+SIM_INPUT_GROUPS: tuple[Group, ...] = (
     Group(
-        "Transient Simulation",
+        "Graph Inputs (optional — do not affect the ANSYS values)",
         (
             Field("thermal.rotor_mass", "Rotor mass, one rotor (m(rotor))", "kg", "float",
                   0.05, 20, 3,
                   "Thermal mass of a single rotor. The default 1.3 kg is an assumption — weigh the "
-                  "actual part; peak temperature scales directly with it."),
+                  "actual part; peak temperature scales directly with it. Graph only."),
             Field("thermal.rotor_specific_heat", "Rotor specific heat (c(p))", "J/kg·K", "float",
                   100, 2000, 0,
                   "486 J/kg·K for 1018 steel (see the materials data in the calculation audit); "
-                  "~460–500 for most rotor steels and cast iron."),
+                  "~460–500 for most rotor steels and cast iron. Graph only."),
             Field("thermal.emissivity", "Surface emissivity (ε)", "-", "float", 0, 1, 2,
                   "Grey-body radiation factor. ~0.28 for machined steel, much higher (0.6–0.9) once "
-                  "the surface oxidises. Radiation only matters at high rotor temperatures."),
+                  "the surface oxidises. Radiation only matters at high rotor temperatures. "
+                  "Graph only."),
             Field("thermal.n_stops", "Stops in duty cycle (N(stops))", "-", "int", 1, 200, 0,
-                  "How many braking events the simulation strings together, each followed by the "
-                  "cooling step. Enough stops shows the saturated (worst-case) temperature."),
+                  "How many braking events the graph strings together, each followed by the cooling "
+                  "step. Enough stops shows the saturated (worst-case) temperature. Graph only."),
             Field("thermal.cool_speed", "Car speed while cooling (v(cool))", "m/s", "float",
                   0, 60, 1,
-                  "Speed used for the convection estimate h = a + b·v between braking events."),
+                  "Speed used for the convection estimate h = a + b·v between braking events. "
+                  "Graph only."),
         ),
     ),
 )
