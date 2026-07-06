@@ -28,6 +28,25 @@ def test_baseline_matches_real_components():
     assert pad is not None and "BP-28" in pad.name
 
 
+def test_materials_catalog_and_matching():
+    names = [m.name for m in catalog.MATERIALS]
+    assert "1018 Mild Steel" in names and "4130 Chromoly" in names
+    # Reference-document values.
+    steel = catalog.match_material(486.0, 0.28)
+    chromoly = catalog.match_material(477.0, 0.27)
+    assert steel is not None and steel.name == "1018 Mild Steel"
+    assert chromoly is not None and chromoly.name == "4130 Chromoly"
+    # Off-catalog values resolve to no match (the UI shows "Custom").
+    assert catalog.match_material(600.0, 0.5) is None
+
+
+def test_default_config_material_is_mild_steel():
+    # The default thermal inputs (cp 486, emissivity 0.28) should read as 1018 Mild Steel.
+    t = rc.outboarded_x2().thermal
+    mat = catalog.match_material(t.rotor_specific_heat, t.emissivity)
+    assert mat is not None and mat.name == "1018 Mild Steel"
+
+
 def test_series_bores_are_discrete_and_sorted():
     bores = catalog.bores_for_series("Tilton 76-Series")
     assert bores == sorted(bores)

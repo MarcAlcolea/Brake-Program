@@ -44,6 +44,7 @@ from .panels.report_tab import ReportTab
 from .panels.requirements_panel import RequirementsPanel
 from .panels.shared_info_panel import SharedInfoPanel
 from .plots.plot_panel import SensitivityPanel
+from .panels.material_panel import ThermalMaterialPanel
 from .panels.thermal_sim_panel import ThermalSimPanel
 from .uikit import muted
 from .widgets import ClickableLabel, CollapsibleSection
@@ -253,7 +254,9 @@ class MainWindow(QMainWindow):
                           "the right."))
         lv.addWidget(InputPanel(self.controller, groups=thermal_spec.INPUT_GROUPS))
         lv.addWidget(hline())
-        lv.addWidget(note("Optional — these only shape the preview graph, not the ANSYS values."))
+        lv.addWidget(note("Optional — these only shape the preview graph, not the ANSYS values. "
+                          "Pick a rotor material to fill the specific heat and emissivity."))
+        lv.addWidget(ThermalMaterialPanel(self.controller))
         lv.addWidget(InputPanel(self.controller, groups=thermal_spec.SIM_INPUT_GROUPS, expanded=False))
         lv.addStretch(1)
         left_scroll = _scroll(left)
@@ -266,7 +269,7 @@ class MainWindow(QMainWindow):
         rv.setContentsMargins(4, 4, 4, 4)
         rv.addWidget(self._thermal_outputs)
         rv.addWidget(hline())
-        rv.addWidget(note("Preview only — a rough sanity check, not a substitute for ANSYS."))
+        rv.addWidget(note("Preview — not a substitute for ANSYS or similar simulation software."))
         rv.addWidget(CollapsibleSection("Rotor temperature graph", self._thermal_sim, expanded=False))
         rv.addStretch(1)
         right_scroll = _scroll(right)

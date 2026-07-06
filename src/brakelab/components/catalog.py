@@ -42,6 +42,18 @@ class PadSpec:
     note: str = ""
 
 
+@dataclass(frozen=True)
+class MaterialSpec:
+    """A rotor material. Only the two properties the lumped-capacitance graph uses (specific heat
+    and emissivity) are applied to the config; density is carried for reference only."""
+
+    name: str
+    specific_heat: float     # J/kg·K
+    emissivity: float        # grey-body, smooth/unoxidised surface
+    density: float           # g/cm³ (reference only — the sim uses rotor mass, entered separately)
+    note: str = ""
+
+
 def _tilton_76(bore_in: float) -> MasterCylinderSpec:
     return MasterCylinderSpec(
         name=f'Tilton 76-Series {bore_in:.3f}"'.replace(".000", ".0"),
@@ -70,10 +82,25 @@ BRAKE_PADS: list[PadSpec] = [
     PadSpec("Wilwood PolyMatrix BP-40", 0.62, note="approximate; verify."),
 ]
 
+# Rotor materials — properties from reference/Brake Rotors Simulations 2026.docx ("What are the
+# material properties?"). 4130 is the team's preferred choice (far higher max service temperature).
+MATERIALS: list[MaterialSpec] = [
+    MaterialSpec("1018 Mild Steel", specific_heat=486.0, emissivity=0.28, density=7.87,
+                 note="AISI 1018 (mild/low-carbon). Specific heat 0.486 J/g·K; emissivity 0.20–0.32 "
+                      "smooth/unoxidised (0.28 used); density 7.87 g/cm³. Max service temp ~250 °C — "
+                      "easy to machine and cheap, but may warp in Endurance."),
+    MaterialSpec("4130 Chromoly", specific_heat=477.0, emissivity=0.27, density=7.85,
+                 note="AISI 4130 (low-alloy). Specific heat 0.477 J/g·K; emissivity 0.27 polished; "
+                      "density 7.85 g/cm³. Max service temp >500 °C — superior heat resistance, the "
+                      "team's preferred rotor material."),
+]
+
 # --- lookup / matching helpers ---------------------------------------------------------------
 _BORE_TOL = 0.05     # mm
 _AREA_TOL = 1.0      # mm²
 _MU_TOL = 0.005
+_CP_TOL = 1.0        # J/kg·K
+_EMISS_TOL = 0.005
 
 
 def master_cylinder_series() -> list[str]:
@@ -110,4 +137,11 @@ def match_pad(friction_coefficient: float) -> PadSpec | None:
     for pad in BRAKE_PADS:
         if abs(pad.friction_coefficient - friction_coefficient) <= _MU_TOL:
             return pad
+    return None
+
+
+def match_material(specific_heat: float, emissivity: float) -> MaterialSpec | None:
+    for mat in MATERIALS:
+        if abs(mat.specific_heat - specific_heat) <= _CP_TOL and abs(mat.emissivity - emissivity) <= _EMISS_TOL:
+            return mat
     return None
