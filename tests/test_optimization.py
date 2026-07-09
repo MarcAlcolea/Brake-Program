@@ -78,6 +78,38 @@ def test_lockup_order_constraint():
     assert res.best.evaluation.metrics["lockup_order"] >= -1e-6
 
 
+def _feasibility_problem(**kw):
+    """Feasibility mode: no objective, just constraints to satisfy."""
+    return OptimizationProblem(
+        variables=list(VARIABLES),
+        objectives=[],
+        constraints=[
+            Constraint("brake_bias_front", Op.RANGE, 0.35, 0.65),
+            Constraint("required_driver_force", Op.LE, None, 600.0),
+            Constraint("pedal_travel", Op.RANGE, 20.0, 70.0),
+        ],
+        settings=Settings(iterations=1500, alternatives=5, **kw),
+    )
+
+
+def test_feasibility_mode_returns_feasible_designs_and_message():
+    res = OptimizationRunner(rc.outboarded_x2()).run(_feasibility_problem())
+    assert res.designs
+    assert res.best.evaluation.feasible
+    assert any("Feasibility mode" in m for m in res.messages)
+
+
+def test_feasibility_mode_ranks_by_constraint_margin():
+    # With no objective, designs are ranked by score = -(minimum constraint slack), so score is
+    # non-decreasing and every feasible design (inside all limits) scores non-positive.
+    res = OptimizationRunner(rc.outboarded_x2()).run(_feasibility_problem())
+    scores = [d.evaluation.score for d in res.designs]
+    assert scores == sorted(scores)
+    for d in res.designs:
+        if d.evaluation.feasible:
+            assert d.evaluation.score <= 1e-9
+
+
 def test_sensitivity_shares_sum_to_one():
     infl = sensitivity(rc.outboarded_x2(), VARIABLES, "required_driver_force")
     assert abs(sum(i.share for i in infl) - 1.0) < 1e-6
