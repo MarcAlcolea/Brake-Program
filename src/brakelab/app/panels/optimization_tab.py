@@ -54,8 +54,17 @@ from ...optimization.report import build_optimization_report
 from ...persistence import ConfigLibrary
 from .. import theme
 from ..controller import ProjectController
-from ..uikit import fit_table, plain_table, style_combo
+from ..uikit import fit_table, muted, plain_table, style_combo
 from ..widgets import CollapsibleSection, InfoButton
+
+_LOCK_SENTINEL = 9.98  # the grip-use metrics fall back to ~9.99 when no forward result exists
+
+
+def _lock_text(util: float | None) -> str:
+    """Turn an axle grip-utilisation into a lock-up verdict (>1.0 means that axle locks)."""
+    if util is None or util >= _LOCK_SENTINEL:
+        return "—"
+    return f"Locks ({util:.2f})" if util > 1.0 + 1e-6 else f"Safe ({util:.2f})"
 
 # (path, label, unit, min, max, on-by-default, kind, note)
 _VARIABLES = [
@@ -136,7 +145,8 @@ class OptimizationTab(QWidget):
         self._layout.setSpacing(4)
 
         self._add("1. Variables — what the optimizer may change", self._variables())
-        self._add("2. Objectives — what a good design minimizes, maximizes or targets", self._objectives())
+        self._add("2. Objectives — optional; rank designs, or leave blank to just meet the constraints",
+                  self._objectives())
         self._add("3. Constraints — hard engineering limits", self._constraints())
         self._add("4. Optimization settings", self._settings())
 
@@ -192,6 +202,19 @@ class OptimizationTab(QWidget):
 
     # ---- 2. Objectives ----------------------------------------------------------------------
     def _objectives(self) -> QWidget:
+        content = QWidget()
+        v = QVBoxLayout(content)
+        v.setContentsMargins(14, 2, 2, 6)
+        note = QLabel(
+            "Optional. Leave every objective unchecked to simply find any design that satisfies the "
+            "constraints below (a feasibility search — e.g. “no lock-up, under 400 N pedal force, "
+            "pedal travel 30–60 mm”). Check one or more to rank the feasible designs by what "
+            "they minimize, maximize or hit a target."
+        )
+        note.setWordWrap(True)
+        muted(note, theme.muted_text())
+        v.addWidget(note)
+
         table = plain_table(["Use", "Objective", "Unit", "Goal", "Target", "Weight", ""], stretch_col=1)
         self._obj_rows = []
         table.setRowCount(len(OBJECTIVE_KEYS))
@@ -214,7 +237,8 @@ class OptimizationTab(QWidget):
             table.setCellWidget(row, 6, _wrap(InfoButton(m.label, m.note or m.label)))
             self._obj_rows.append({"key": key, "check": check, "goal": goal, "target": target, "weight": weight})
         fit_table(table)
-        return table
+        v.addWidget(table)
+        return content
 
     # ---- 3. Constraints ---------------------------------------------------------------------
     def _constraints(self) -> QWidget:
@@ -409,16 +433,21 @@ class OptimizationTab(QWidget):
 
     def _populate_ranked(self) -> None:
         variables = self._result.problem.enabled_variables()
-        headers = ["Rank", "Feasible", "Score"] + [f"{v.label} [{v.unit}]" if v.unit not in ("", "-") else v.label for v in variables]
+        has_obj = bool(self._result.problem.enabled_objectives())
+        var_headers = [f"{v.label} [{v.unit}]" if v.unit not in ("", "-") else v.label for v in variables]
+        headers = ["Rank", "Feasible", "Front axle", "Rear axle", "Score"] + var_headers
         self._ranked.setColumnCount(len(headers))
         self._ranked.setHorizontalHeaderLabels(headers)
         self._ranked.setRowCount(len(self._result.designs))
         for i, d in enumerate(self._result.designs):
+            metrics = d.evaluation.metrics
             self._ranked.setItem(i, 0, _cell(str(i + 1)))
             self._ranked.setItem(i, 1, _cell("yes" if d.evaluation.feasible else "no"))
-            self._ranked.setItem(i, 2, _cell(f"{d.evaluation.score:.3f}", right=True))
+            self._ranked.setItem(i, 2, _cell(_lock_text(metrics.get("front_grip_use"))))
+            self._ranked.setItem(i, 3, _cell(_lock_text(metrics.get("rear_grip_use"))))
+            self._ranked.setItem(i, 4, _cell(f"{d.evaluation.score:.3f}" if has_obj else "—", right=True))
             for j, v in enumerate(variables):
-                self._ranked.setItem(i, 3 + j, _cell(f"{d.evaluation.values[v.path]:g}", right=True))
+                self._ranked.setItem(i, 5 + j, _cell(f"{d.evaluation.values[v.path]:g}", right=True))
         self._ranked.resizeColumnsToContents()
         fit_table(self._ranked)
         for b in (self._load_btn, self._save_btn, self._pdf_btn):
@@ -437,7 +466,8 @@ class OptimizationTab(QWidget):
         base = self._result.base_config
         before = self._engine.solve(base)
         keys = ["required_driver_force", "brake_bias_front", "front_line_pressure",
-                "rear_line_pressure", "pedal_travel", "front_rear_balance"]
+                "rear_line_pressure", "pedal_travel", "front_rear_balance",
+                "front_grip_use", "rear_grip_use"]
         self._compare.setRowCount(len(keys))
         for i, key in enumerate(keys):
             m = METRICS[key]
