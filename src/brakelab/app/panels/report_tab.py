@@ -161,13 +161,18 @@ class ReportTab(QWidget):
     def _build_section_choices(self) -> None:
         self._section_h("Sections to include")
         self._c_design = QCheckBox("Design — inputs, results and requirements (Main tab)")
+        self._c_forward = QCheckBox("Performance — actual decel, lock-up and grip use (Simulator tab)")
         self._c_thermal = QCheckBox("Thermal — ANSYS heat-flux and film-coefficient inputs")
         self._c_compare = QCheckBox("Comparison — selected setups side by side")
         self._c_optimize = QCheckBox("Optimization — summary of the latest optimizer run")
         self._c_validation = QCheckBox("Validation notes — engine warnings and errors")
+        self._c_toc = QCheckBox("Table of contents (when the report has several sections)")
         self._c_design.setChecked(True)
+        self._c_forward.setChecked(True)
         self._c_validation.setChecked(True)
-        for c in (self._c_design, self._c_thermal, self._c_compare, self._c_optimize, self._c_validation):
+        self._c_toc.setChecked(True)
+        for c in (self._c_design, self._c_forward, self._c_thermal, self._c_compare,
+                  self._c_optimize, self._c_validation, self._c_toc):
             self._v.addWidget(c)
         self._c_compare.toggled.connect(self._sync_compare_enabled)
         self._opt_note = QLabel("")
@@ -258,10 +263,12 @@ class ReportTab(QWidget):
             logo_path=self._logo.text().strip(),
             detail=self._detail.currentData(),
             include_design=self._c_design.isChecked(),
+            include_forward=self._c_forward.isChecked(),
             include_thermal=self._c_thermal.isChecked(),
             include_compare=include_compare,
             include_optimization=self._c_optimize.isChecked() and self._c_optimize.isEnabled(),
             include_validation=self._c_validation.isChecked(),
+            include_toc=self._c_toc.isChecked(),
             compare_configs=compare_configs,
             optimization_result=self._opt_result() if self._c_optimize.isChecked() else None,
         )

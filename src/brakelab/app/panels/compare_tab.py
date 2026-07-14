@@ -68,6 +68,9 @@ class CompareTab(QWidget):
 
         self._small_font = QFont()
         self._small_font.setPointSize(11)
+        self._small_bold_font = QFont()
+        self._small_bold_font.setPointSize(11)
+        self._small_bold_font.setBold(True)
 
         layout = QVBoxLayout(self)
         hint = QLabel("Pick a saved setup per column. For each output, green = higher and red = lower "
@@ -154,13 +157,16 @@ class CompareTab(QWidget):
         if shown == 0 and len(filled) >= 2:
             self._note("All inputs are identical.", in_section=True)
 
-        # All inputs (small type, collapsed by default).
+        # All inputs (small type, collapsed by default). Differing rows are bold so they stand out
+        # even inside the full list (the same rows appear on their own in "Inputs that differ").
         self._begin_section(_ALL)
         for group in INPUT_GROUPS:
             for field in group.fields:
                 values = [None if c is None else get_by_path(c, field.path) for c in configs]
+                present = [v for v in values if v is not None]
+                differs = len({_fmt_input(v) for v in present}) > 1
                 self._plain_row(field.label, [None if v is None else _fmt_input(v) for v in values],
-                                small=True)
+                                small=True, bold=differs)
 
         # Outputs (all of them, tinted green/red vs. the first filled setup).
         results = [None if c is None else self._engine.solve(c) for c in configs]
@@ -211,8 +217,10 @@ class CompareTab(QWidget):
         if in_section:
             self._record(row)
 
-    def _plain_row(self, label, shown_values, small: bool = False) -> None:
-        """Label + pre-formatted string values, no colour (used for inputs and the requirements row)."""
+    def _plain_row(self, label, shown_values, small: bool = False, bold: bool = False) -> None:
+        """Label + pre-formatted string values, no colour (used for inputs and the requirements row).
+
+        ``bold`` emphasises a whole row (used to flag inputs that differ between the compared setups)."""
         row = self._table.rowCount()
         self._table.insertRow(row)
         cells = [QTableWidgetItem(label)]
@@ -220,9 +228,11 @@ class CompareTab(QWidget):
             item = QTableWidgetItem("" if text is None else text)
             item.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
             cells.append(item)
+        font = self._small_bold_font if (small and bold) else (
+            self._small_font if small else None)
         for col, item in enumerate(cells):
-            if small:
-                item.setFont(self._small_font)
+            if font is not None:
+                item.setFont(font)
             self._table.setItem(row, col, item)
         self._record(row)
 
