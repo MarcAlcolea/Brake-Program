@@ -146,7 +146,7 @@ if sys.platform == "darwin":
         info_plist={
             "CFBundleName": "Brake Design Studio",
             "CFBundleDisplayName": "Brake Design Studio",
-            "CFBundleShortVersionString": "1.6.0",
+            "CFBundleShortVersionString": "1.7.0",
             "NSHighResolutionCapable": True,
             "NSPrincipalClass": "NSApplication",
         },
