@@ -23,13 +23,17 @@ def _platform_fallback() -> list[str]:
 
 
 def _resolve_families() -> list[str]:
-    """Prefer real Helvetica when the machine actually has it; otherwise the platform fallback.
+    """Pick the UI font family list for this platform.
 
-    macOS ships Helvetica/Helvetica Neue, so it's used there. Windows does not, and asking for it
-    yields a low-resolution *bitmap* stand-in — so we only use Helvetica if it is genuinely installed
-    AND smoothly scalable (i.e. a real outline font, not the bitmap). A friend who installs a licensed
-    Helvetica on Windows then gets it automatically."""
+    macOS ships a real, smoothly-scalable Helvetica/Helvetica Neue, so we prefer it there. Windows
+    does NOT ship Helvetica: asking for it yields whatever "Helvetica" the machine happens to have —
+    often an Adobe/third-party clone or a bitmap stand-in that renders jagged and broken. That made
+    the app look fine on some Windows PCs and awful on others. So on Windows (and Linux) we never ask
+    for Helvetica at all — we use the native UI font (Segoe UI on Windows), which every machine has
+    and renders crisply, including its Light weight."""
     fallback = _platform_fallback()
+    if sys.platform != "darwin":
+        return fallback  # Windows/Linux: always the native font, never a stray Helvetica
     try:
         from PySide6.QtGui import QFontDatabase
 
