@@ -698,6 +698,24 @@ def _thermal_section(story: list, config: VehicleConfig, results: BrakeResults, 
 
 
 # --- comparison ------------------------------------------------------------------------------
+def _compare_outputs_block(story: list, title: str, spec: list, names: list[str], configs: list,
+                           solved: list, col_widths: list, st) -> None:
+    """A block of output rows, each cell shaded green (higher) / red (lower) vs. the leftmost setup."""
+    story.append(Paragraph(title, st["block"]))
+    rows = [[_P("Quantity", st, "cell_b")] + [_P(nm, st, "cell_b") for nm in names]]
+    extra: list = []
+    for i, (label, fn) in enumerate(spec, start=1):
+        vals = [fn(c, r) for c, r in zip(configs, solved)]
+        base = vals[0]
+        cells = [_P(label, st, "cell")]
+        for j, v in enumerate(vals):
+            cells.append(_P(_auto(v) if v is not None else "—", st, "cell_r"))
+            if j != 0 and base is not None and v is not None and abs(v - base) > 1e-9:
+                extra.append(("BACKGROUND", (1 + j, i), (1 + j, i), _UP_BG if v > base else _DOWN_BG))
+        rows.append(cells)
+    story.append(_table(rows, col_widths=col_widths, header=True, extra_style=extra, align_right_from=1))
+
+
 def _compare_section(story: list, configs: list[VehicleConfig], engine: BrakeEngine, st, sec: _Sections) -> None:
     configs = [c for c in configs if c is not None]
     if len(configs) < 2:
@@ -738,9 +756,8 @@ def _compare_section(story: list, configs: list[VehicleConfig], engine: BrakeEng
             extra.append(("BACKGROUND", (0, i), (-1, i), colors.HexColor("#f0f2f5")))
     story.append(_table(rows, col_widths=col_widths, header=True, extra_style=extra, align_right_from=1))
 
-    # ---- Outputs: green if higher / red if lower than the leftmost setup --------------------
-    story.append(Paragraph("Outputs", st["block"]))
-    output_rows = [
+    # ---- Backward (design calc) outputs: green if higher / red if lower than the leftmost -----
+    backward_rows = [
         ("Front line pressure [MPa]", lambda c, r: r.sizing.front.line_pressure),
         ("Rear line pressure [MPa]", lambda c, r: r.sizing.rear.line_pressure),
         ("Front clamp force [N]", lambda c, r: r.sizing.front.clamp_force),
@@ -750,18 +767,36 @@ def _compare_section(story: list, configs: list[VehicleConfig], engine: BrakeEng
         ("Effective MC stroke [mm]", lambda c, r: r.pedal_travel.effective_stroke),
         ("Pedal travel [mm]", lambda c, r: r.pedal_travel.pedal_travel),
     ]
-    rows = [[_P("Quantity", st, "cell_b")] + [_P(nm, st, "cell_b") for nm in names]]
-    extra = []
-    for i, (label, fn) in enumerate(output_rows, start=1):
-        vals = [fn(c, r) for c, r in zip(configs, solved)]
-        base = vals[0]
-        cells = [_P(label, st, "cell")]
-        for j, v in enumerate(vals):
-            cells.append(_P(_auto(v), st, "cell_r"))
-            if j != 0 and abs(v - base) > 1e-9:
-                extra.append(("BACKGROUND", (1 + j, i), (1 + j, i), _UP_BG if v > base else _DOWN_BG))
-        rows.append(cells)
-    story.append(_table(rows, col_widths=col_widths, header=True, extra_style=extra, align_right_from=1))
+    _compare_outputs_block(story, "Backward outputs (design calc)", backward_rows, names, configs,
+                           solved, col_widths, st)
+
+    # ---- Forward (performance simulation) outputs, same green/red shading --------------------
+    if all(getattr(r, "forward", None) is not None for r in solved):
+        forward_rows = [
+            ("Actual deceleration [g]", lambda c, r: r.forward.actual_decel_g),
+            ("Front grip utilisation [%]", lambda c, r: r.forward.front_utilization * 100.0),
+            ("Rear grip utilisation [%]", lambda c, r: r.forward.rear_utilization * 100.0),
+            ("Front line pressure produced [MPa]", lambda c, r: r.forward.line_pressure_front),
+            ("Rear line pressure produced [MPa]", lambda c, r: r.forward.line_pressure_rear),
+            ("Total stopping force [N]", lambda c, r: r.forward.stopping_force),
+        ]
+        _compare_outputs_block(story, "Forward outputs (performance sim)", forward_rows, names, configs,
+                               solved, col_widths, st)
+
+        # Lock-up per axle — coloured (red = the axle skids at the design pedal force).
+        story.append(Paragraph("Lock-up at design pedal force", st["block"]))
+        lock_rows = [[_P("Axle", st, "cell_b")] + [_P(nm, st, "cell_b") for nm in names]]
+        lock_extra: list = []
+        for i, (axle, attr) in enumerate((("Front", "front_locked"), ("Rear", "rear_locked")), start=1):
+            row = [_P(axle, st, "cell")]
+            for j, r in enumerate(solved):
+                locked = getattr(r.forward, attr)
+                row.append(_P(f"<b>{'LOCKS UP' if locked else 'ok'}</b>", st, "cell"))
+                lock_extra.append(("TEXTCOLOR", (1 + j, i), (1 + j, i), _FAIL if locked else _PASS))
+                lock_extra.append(("BACKGROUND", (1 + j, i), (1 + j, i), _FAIL_BG if locked else _PASS_BG))
+                lock_extra.append(("ALIGN", (1 + j, i), (1 + j, i), "CENTER"))
+            lock_rows.append(row)
+        story.append(_table(lock_rows, col_widths=col_widths, header=True, extra_style=lock_extra))
 
     # ---- Requirements met row (colour-coded yes/no) ----------------------------------------
     story.append(Paragraph("Verdict", st["block"]))
@@ -922,6 +957,10 @@ def build_report(config: VehicleConfig, results: BrakeResults, path: str | Path,
         _optimization_section(story, options.optimization_result, st, sec)
     if options.include_validation:
         _validation_section(story, results, st, sec)
+
+    # Drop any trailing spacers so the document can't spill onto an empty final page.
+    while story and isinstance(story[-1], Spacer):
+        story.pop()
 
     # multiBuild resolves TOC page numbers over repeated passes.
     doc.multiBuild(story)

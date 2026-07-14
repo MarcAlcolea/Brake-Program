@@ -32,6 +32,7 @@ from ...core.engine import BrakeEngine
 from ...persistence import ConfigLibrary
 from .. import theme
 from ..field_spec import GROUPS as INPUT_GROUPS
+from ..forward_spec import OUTPUT_GROUPS as FORWARD_GROUPS
 from ..output_spec import GROUPS as OUTPUT_GROUPS
 from ..uikit import muted, style_combo
 
@@ -39,7 +40,16 @@ _N_COLS = 5           # number of comparison columns
 _EMPTY = "—"          # dropdown sentinel for "no setup in this column"
 _DIFF = "Inputs that differ"
 _ALL = "All inputs"
-_OUT = "Outputs"
+_OUT = "Backward outputs (design calc)"
+_FWD = "Forward outputs (performance sim)"
+
+
+def _safe_get(output, result, config):
+    """Read an output value, returning None if it can't be computed (e.g. forward result absent)."""
+    try:
+        return output.getter(result, config)
+    except Exception:  # noqa: BLE001 — a missing/None phase must never break the comparison
+        return None
 
 
 def _fmt_input(value) -> str:
@@ -168,20 +178,27 @@ class CompareTab(QWidget):
                 self._plain_row(field.label, [None if v is None else _fmt_input(v) for v in values],
                                 small=True, bold=differs)
 
-        # Outputs (all of them, tinted green/red vs. the first filled setup).
+        # Outputs, tinted green/red vs. the first filled setup — split into the backward design calc
+        # and the forward performance simulation so each can be read (and folded) on its own.
         results = [None if c is None else self._engine.solve(c) for c in configs]
         baseline = filled[0]
-        self._begin_section(_OUT)
-        for group in OUTPUT_GROUPS:
-            for output in group.outputs:
-                values = [None if results[i] is None else output.getter(results[i], configs[i])
-                          for i in range(len(configs))]
-                label = output.label + (f" [{output.unit}]" if output.unit not in ("", "-") else "")
-                self._output_row(label, values, baseline)
+        self._add_output_section(_OUT, OUTPUT_GROUPS, results, configs, baseline)
+        self._add_output_section(_FWD, FORWARD_GROUPS, results, configs, baseline)
+
         ok = [None if results[i] is None else results[i].ok for i in range(len(configs))]
         self._plain_row("All requirements met", [None if v is None else _fmt_input(v) for v in ok])
 
         self._apply_collapsed()
+
+    def _add_output_section(self, title, groups, results, configs, baseline: int) -> None:
+        """One collapsible section of output rows, each tinted green/red vs. the baseline column."""
+        self._begin_section(title)
+        for group in groups:
+            for output in group.outputs:
+                values = [None if results[i] is None else _safe_get(output, results[i], configs[i])
+                          for i in range(len(configs))]
+                label = output.label + (f" [{output.unit}]" if output.unit not in ("", "-") else "")
+                self._output_row(label, values, baseline)
 
     # ---- row builders -----------------------------------------------------------------------
     def _bold_item(self, text: str) -> QTableWidgetItem:
