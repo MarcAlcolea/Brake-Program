@@ -37,6 +37,7 @@ from reportlab.platypus import (
     Flowable,
     Frame,
     Image,
+    KeepTogether,
     NextPageTemplate,
     PageBreak,
     PageTemplate,
@@ -115,6 +116,8 @@ class ReportOptions:
     include_forward: bool = True     # Forward simulator: actual decel, lock-up, grip utilisation
     include_thermal: bool = False    # Thermal-tab heat-flux / film-coefficient section
     include_compare: bool = False    # side-by-side comparison of ``compare_configs``
+    compare_backward: bool = True    # in the comparison, show the backward (design-calc) outputs
+    compare_forward: bool = True     # in the comparison, show the forward (performance) outputs
     include_optimization: bool = False  # summary of ``optimization_result`` if present
     include_validation: bool = True  # engine warnings / errors
     include_toc: bool = True         # table of contents after the cover (auto-skipped if trivial)
@@ -651,6 +654,47 @@ def _forward_section(story: list, config: VehicleConfig, results: BrakeResults, 
                       heading="Full forward-simulation listing")
 
 
+def _thermal_chart(sim, ambient: float):
+    """Render the transient rotor-temperature curve as a reportlab Image, or None on any failure.
+
+    Uses a bare Agg canvas (not pyplot / not the Qt backend) so it is safe to call while the GUI's
+    Qt event loop is running, and needs no display."""
+    try:
+        from io import BytesIO
+
+        from matplotlib.backends.backend_agg import FigureCanvasAgg
+        from matplotlib.figure import Figure
+
+        fig = Figure(figsize=(7.0, 2.9), dpi=150)
+        FigureCanvasAgg(fig)
+        ax = fig.add_subplot(111)
+        ink = "#1c1c1c"
+        ax.plot(sim.time, sim.temp_front, color=ink, linewidth=1.4, label="Front rotor")
+        ax.plot(sim.time, sim.temp_rear, color=ink, linewidth=1.1, linestyle="--", label="Rear rotor")
+        ax.axhline(ambient, color="#9a9a9a", linewidth=0.8, linestyle=":", label="Ambient")
+        ax.set_xlabel("Time (s)", fontsize=8, color=ink)
+        ax.set_ylabel("Rotor temperature (°C)", fontsize=8, color=ink)
+        ax.tick_params(colors=ink, labelsize=7)
+        for spine in ax.spines.values():
+            spine.set_color("#c9ced4")
+        ax.grid(True, alpha=0.25)
+        legend = ax.legend(fontsize=7, loc="upper left", frameon=False)
+        for text in legend.get_texts():
+            text.set_color(ink)
+        fig.tight_layout(pad=0.6)
+
+        buf = BytesIO()
+        fig.savefig(buf, format="png", facecolor="white")
+        buf.seek(0)
+        w = _CONTENT_W
+        h = w * 2.9 / 7.0
+        img = Image(buf, width=w, height=h)
+        img.hAlign = "LEFT"
+        return img
+    except Exception:  # noqa: BLE001 — a chart must never break the report
+        return None
+
+
 def _thermal_section(story: list, config: VehicleConfig, results: BrakeResults, st, sec: _Sections) -> None:
     th = getattr(results, "thermal", None)
     if th is None:
@@ -682,10 +726,6 @@ def _thermal_section(story: list, config: VehicleConfig, results: BrakeResults, 
     except Exception:  # noqa: BLE001 — the report must not die on odd thermal inputs
         sim = None
     if sim is not None:
-        story.append(Paragraph(
-            f"Transient preview — {t.n_stops} stops of {_num(t.brake_time, 1)} s, "
-            f"{_num(t.cool_time, 1)} s cooling between (lumped-capacitance sanity check, not a substitute "
-            "for ANSYS)", st["block"]))
         vw = (_CONTENT_W - 25 * mm - 70 * mm) / 2
         sim_rows = [
             ["Quantity", "Front rotor", "Rear rotor", "Unit"],
@@ -694,7 +734,21 @@ def _thermal_section(story: list, config: VehicleConfig, results: BrakeResults, 
             ["Rise per stop (no cooling)",
              _num(sim.adiabatic_rise_front, 1), _num(sim.adiabatic_rise_rear, 1), "°C"],
         ]
-        story.append(_table(sim_rows, col_widths=[70 * mm, vw, vw, 25 * mm], align_right_from=1))
+        # Keep the heading, table and chart together so the graph never orphans onto its own page.
+        preview = [
+            Paragraph("Transient temperature — rough estimate only", st["block"]),
+            Paragraph(
+                f"A simplified lumped-capacitance model over {t.n_stops} stops of {_num(t.brake_time, 1)} s "
+                f"with {_num(t.cool_time, 1)} s of cooling between. This is an approximate preview to gauge "
+                "roughly how hot the rotors get — not an actual thermal simulation. Use ANSYS (or similar) "
+                "for design-grade numbers.", st["caption"]),
+            _table(sim_rows, col_widths=[70 * mm, vw, vw, 25 * mm], align_right_from=1),
+        ]
+        chart = _thermal_chart(sim, config.thermal.ambient_temp)
+        if chart is not None:
+            preview.append(Spacer(1, 3 * mm))
+            preview.append(chart)
+        story.append(KeepTogether(preview))
 
 
 # --- comparison ------------------------------------------------------------------------------
@@ -716,13 +770,17 @@ def _compare_outputs_block(story: list, title: str, spec: list, names: list[str]
     story.append(_table(rows, col_widths=col_widths, header=True, extra_style=extra, align_right_from=1))
 
 
-def _compare_section(story: list, configs: list[VehicleConfig], engine: BrakeEngine, st, sec: _Sections) -> None:
+def _compare_section(story: list, configs: list[VehicleConfig], engine: BrakeEngine, st, sec: _Sections,
+                     backward: bool = True, forward: bool = True) -> None:
     configs = [c for c in configs if c is not None]
     if len(configs) < 2:
         return
+    which = "backward (design-calc) and forward (performance) outputs" if backward and forward else (
+        "backward (design-calc) outputs" if backward else
+        "forward (performance) outputs" if forward else "inputs")
     sec.heading(story, "Comparison", st,
-                "Setups side by side. Inputs that differ are bold; each output is shaded green when "
-                "higher and red when lower than the first (leftmost) setup.")
+                f"Setups side by side, comparing their {which}. Inputs that differ are bold; each output "
+                "is shaded green when higher and red when lower than the first (leftmost) setup.")
     names = [c.name for c in configs]
     solved = [engine.solve(c) for c in configs]
     n = len(configs)
@@ -757,21 +815,22 @@ def _compare_section(story: list, configs: list[VehicleConfig], engine: BrakeEng
     story.append(_table(rows, col_widths=col_widths, header=True, extra_style=extra, align_right_from=1))
 
     # ---- Backward (design calc) outputs: green if higher / red if lower than the leftmost -----
-    backward_rows = [
-        ("Front line pressure [MPa]", lambda c, r: r.sizing.front.line_pressure),
-        ("Rear line pressure [MPa]", lambda c, r: r.sizing.rear.line_pressure),
-        ("Front clamp force [N]", lambda c, r: r.sizing.front.clamp_force),
-        ("Rear clamp force [N]", lambda c, r: r.sizing.rear.clamp_force),
-        ("Pedal force required, front [N]", lambda c, r: r.hydraulics.bar_force_front),
-        ("Pedal force delivered [N]", lambda c, r: r.hydraulics.pedal_force),
-        ("Effective MC stroke [mm]", lambda c, r: r.pedal_travel.effective_stroke),
-        ("Pedal travel [mm]", lambda c, r: r.pedal_travel.pedal_travel),
-    ]
-    _compare_outputs_block(story, "Backward outputs (design calc)", backward_rows, names, configs,
-                           solved, col_widths, st)
+    if backward:
+        backward_rows = [
+            ("Front line pressure [MPa]", lambda c, r: r.sizing.front.line_pressure),
+            ("Rear line pressure [MPa]", lambda c, r: r.sizing.rear.line_pressure),
+            ("Front clamp force [N]", lambda c, r: r.sizing.front.clamp_force),
+            ("Rear clamp force [N]", lambda c, r: r.sizing.rear.clamp_force),
+            ("Pedal force required, front [N]", lambda c, r: r.hydraulics.bar_force_front),
+            ("Pedal force delivered [N]", lambda c, r: r.hydraulics.pedal_force),
+            ("Effective MC stroke [mm]", lambda c, r: r.pedal_travel.effective_stroke),
+            ("Pedal travel [mm]", lambda c, r: r.pedal_travel.pedal_travel),
+        ]
+        _compare_outputs_block(story, "Backward outputs (design calc)", backward_rows, names, configs,
+                               solved, col_widths, st)
 
     # ---- Forward (performance simulation) outputs, same green/red shading --------------------
-    if all(getattr(r, "forward", None) is not None for r in solved):
+    if forward and all(getattr(r, "forward", None) is not None for r in solved):
         forward_rows = [
             ("Actual deceleration [g]", lambda c, r: r.forward.actual_decel_g),
             ("Front grip utilisation [%]", lambda c, r: r.forward.front_utilization * 100.0),
@@ -836,11 +895,12 @@ def _validation_section(story: list, results: BrakeResults, st, sec: _Sections) 
         return
     sec.heading(story, "Validation Notes", st)
     tags = {"error": (_FAIL, "ERROR"), "warning": (_WARN, "WARNING"), "info": (_GREY, "INFO")}
+    msgs = []
     for msg in results.messages:
         color, tag = tags.get(msg.level, (_GREY, msg.level.upper()))
-        story.append(Paragraph(
+        msgs.append(Paragraph(
             f'<font color="#{color.hexval()[2:]}"><b>[{tag}]</b></font> {msg.message}', st["body"]))
-    story.append(Spacer(1, 3 * mm))
+    story.append(KeepTogether(msgs))  # keep the notes together so a line can't orphan onto a new page
 
 
 # =============================================================================================
@@ -952,7 +1012,8 @@ def build_report(config: VehicleConfig, results: BrakeResults, path: str | Path,
     if options.include_thermal:
         _thermal_section(story, config, results, st, sec)
     if options.include_compare and options.compare_configs:
-        _compare_section(story, options.compare_configs, engine, st, sec)
+        _compare_section(story, options.compare_configs, engine, st, sec,
+                         backward=options.compare_backward, forward=options.compare_forward)
     if options.include_optimization and options.optimization_result is not None:
         _optimization_section(story, options.optimization_result, st, sec)
     if options.include_validation:

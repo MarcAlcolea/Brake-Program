@@ -188,6 +188,14 @@ class ReportTab(QWidget):
         self._compare_layout.setSpacing(2)
         self._v.addWidget(self._compare_holder)
 
+        self._hint("Which outputs to compare (both are shown side by side when both are ticked):")
+        self._cmp_backward = QCheckBox("Backward outputs (design calc — line pressure, clamp/pedal force…)")
+        self._cmp_forward = QCheckBox("Forward outputs (performance — actual decel, lock-up, grip use…)")
+        self._cmp_backward.setChecked(True)
+        self._cmp_forward.setChecked(True)
+        self._v.addWidget(self._cmp_backward)
+        self._v.addWidget(self._cmp_forward)
+
     # ---- state ------------------------------------------------------------------------------
     def reload(self) -> None:
         """Refresh preset lists and optimization availability (call when the tab shows)."""
@@ -226,7 +234,10 @@ class ReportTab(QWidget):
         theme.style_checkboxes(self)  # style the freshly-created comparison checkboxes
 
     def _sync_compare_enabled(self) -> None:
-        self._compare_holder.setEnabled(self._c_compare.isChecked())
+        on = self._c_compare.isChecked()
+        self._compare_holder.setEnabled(on)
+        self._cmp_backward.setEnabled(on)
+        self._cmp_forward.setEnabled(on)
 
     def _pick_logo(self) -> None:
         path, _ = QFileDialog.getOpenFileName(
@@ -266,6 +277,8 @@ class ReportTab(QWidget):
             include_forward=self._c_forward.isChecked(),
             include_thermal=self._c_thermal.isChecked(),
             include_compare=include_compare,
+            compare_backward=self._cmp_backward.isChecked(),
+            compare_forward=self._cmp_forward.isChecked(),
             include_optimization=self._c_optimize.isChecked() and self._c_optimize.isEnabled(),
             include_validation=self._c_validation.isChecked(),
             include_toc=self._c_toc.isChecked(),
