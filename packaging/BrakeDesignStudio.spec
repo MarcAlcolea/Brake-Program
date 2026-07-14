@@ -23,6 +23,8 @@ a = Analysis(
     hiddenimports=[
         # The Qt canvas is imported inside GUI modules; make sure the hook machinery sees it.
         "matplotlib.backends.backend_qtagg",
+        # The report renders the thermal chart headlessly on a bare Agg canvas.
+        "matplotlib.backends.backend_agg",
     ],
     hookspath=[],
     runtime_hooks=[],
@@ -104,9 +106,15 @@ def _qt_fragments(mods):
     return frags
 
 _DROP_FRAGMENTS = _qt_fragments(_DROP_QT_MODULES) + _DROP_PLUGIN_DIRS
+_DROP_BARE = set(_DROP_QT_MODULES)  # bare top-level framework symlink names, e.g. "QtQml"
 
 def _keep(entry):
     dest = entry[0].replace("\\", "/")
+    # macOS bundles a bare symlink per framework (Frameworks/QtQml -> .../QtQml.framework/...). Its
+    # dest basename is just the module name; if we drop the framework but keep this symlink it dangles
+    # and `codesign --deep` fails. So drop those symlinks too.
+    if dest.split("/")[-1] in _DROP_BARE:
+        return False
     return not any(frag in dest for frag in _DROP_FRAGMENTS)
 
 a.binaries = [e for e in a.binaries if _keep(e)]
@@ -146,7 +154,7 @@ if sys.platform == "darwin":
         info_plist={
             "CFBundleName": "Brake Design Studio",
             "CFBundleDisplayName": "Brake Design Studio",
-            "CFBundleShortVersionString": "1.7.0",
+            "CFBundleShortVersionString": "1.7.1",
             "NSHighResolutionCapable": True,
             "NSPrincipalClass": "NSApplication",
         },
