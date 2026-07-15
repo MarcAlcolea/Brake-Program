@@ -679,11 +679,98 @@ def _forward_section(story: list, config: VehicleConfig, results: BrakeResults, 
     ]
     story.append(_table(overall, col_widths=[_CONTENT_W - 65 * mm, 40 * mm, 25 * mm], align_right_from=1))
 
+    # Stopping distance & time + a speed-vs-distance curve.
+    from ..core.performance import braking_speeds, stopping_from_config
+
+    vi, vf = braking_speeds(config)
+    da, ta = stopping_from_config(config, fwd.actual_decel_g)
+    dt, tt = stopping_from_config(config, config.target_decel_g)
+    to_txt = "to a stop" if config.performance.stop_to_rest else f"to {_num(vf * 3.6, 0)} km/h"
+    stop_block = [
+        Paragraph("Stopping distance", st["block"]),
+        Paragraph(f"Braking from {_num(vi * 3.6, 0)} km/h ({_num(vi, 1)} m/s) {to_txt}, "
+                  "constant-deceleration model.", st["caption"]),
+        _table([
+            ["", "Distance [m]", "Time [s]"],
+            ["At actual decel", _num(da, 1), _num(ta, 2)],
+            ["At target decel", _num(dt, 1), _num(tt, 2)],
+        ], col_widths=[_CONTENT_W - 90 * mm, 45 * mm, 45 * mm], align_right_from=1),
+    ]
+    chart = _stopping_chart(config, results)
+    if chart is not None:
+        stop_block.append(Spacer(1, 2 * mm))
+        stop_block.append(chart)
+    story.append(KeepTogether(stop_block))
+
     if detail == "extensive" and FORWARD_GROUPS:
         story.append(Spacer(1, 3 * mm))
         story.append(_HRule(0.4, _RULE, pad_before=1, pad_after=4))
         _full_outputs(story, config, results, st, groups=FORWARD_GROUPS,
                       heading="Full forward-simulation listing")
+
+
+def _speed_curve(vi: float, vf: float, decel_g: float, n: int = 60):
+    """(distance[m], speed[km/h]) points for a constant-decel stop from vi to vf."""
+    from .. core.units import GRAVITY
+
+    a = decel_g * GRAVITY
+    if a <= 0:
+        return [0.0], [vi * 3.6]
+    total = (vi * vi - vf * vf) / (2.0 * a)
+    xs, ys = [], []
+    for i in range(n + 1):
+        x = total * i / n
+        v2 = max(vi * vi - 2.0 * a * x, 0.0)
+        xs.append(x)
+        ys.append(v2 ** 0.5 * 3.6)  # m/s -> km/h
+    return xs, ys
+
+
+def _stopping_chart(config: VehicleConfig, results: BrakeResults):
+    """Speed-vs-distance curve for the stop, at the actual and the target deceleration. Returns a
+    reportlab Image (or None). Uses a bare Agg canvas so it is safe under the GUI's Qt loop."""
+    fwd = getattr(results, "forward", None)
+    if fwd is None:
+        return None
+    try:
+        from io import BytesIO
+
+        from matplotlib.backends.backend_agg import FigureCanvasAgg
+        from matplotlib.figure import Figure
+
+        from ..core.performance import braking_speeds
+
+        vi, vf = braking_speeds(config)
+        ink = "#1c1c1c"
+        fig = Figure(figsize=(7.0, 2.9), dpi=150)
+        FigureCanvasAgg(fig)
+        ax = fig.add_subplot(111)
+        xa, ya = _speed_curve(vi, vf, fwd.actual_decel_g)
+        xt, yt = _speed_curve(vi, vf, config.target_decel_g)
+        ax.plot(xa, ya, color=ink, linewidth=1.5, label=f"Actual ({_num(fwd.actual_decel_g, 2)} g)")
+        ax.plot(xt, yt, color=ink, linewidth=1.1, linestyle="--",
+                label=f"Target ({_num(config.target_decel_g, 2)} g)")
+        ax.set_xlabel("Distance (m)", fontsize=8, color=ink)
+        ax.set_ylabel("Speed (km/h)", fontsize=8, color=ink)
+        ax.tick_params(colors=ink, labelsize=7)
+        for spine in ax.spines.values():
+            spine.set_color("#c9ced4")
+        ax.grid(True, alpha=0.25)
+        ax.set_ylim(bottom=0)
+        ax.set_xlim(left=0)
+        legend = ax.legend(fontsize=7, loc="upper right", frameon=False)
+        for text in legend.get_texts():
+            text.set_color(ink)
+        fig.tight_layout(pad=0.6)
+        buf = BytesIO()
+        fig.savefig(buf, format="png", facecolor="white")
+        buf.seek(0)
+        w = _CONTENT_W
+        img = Image(buf, width=w, height=w * 2.9 / 7.0)
+        img.hAlign = "LEFT"
+        return img
+    except Exception:  # noqa: BLE001 — a chart must never break the report
+        return None
 
 
 def _thermal_chart(sim, ambient: float):

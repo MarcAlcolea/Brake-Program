@@ -19,6 +19,7 @@ from ..core.models import (
     MassProperties,
     Pad,
     PedalBox,
+    Performance,
     Rotor,
     Thermal,
     Tires,
@@ -59,6 +60,7 @@ def config_from_dict(data: dict[str, Any]) -> VehicleConfig:
         target_decel_g=data["target_decel_g"],
         notes=data.get("notes", ""),
         thermal=Thermal(**_kw(Thermal, data.get("thermal", {}))),
+        performance=Performance(**_kw(Performance, data.get("performance", {}))),
         assumed_inputs=list(data.get("assumed_inputs", [])),
     )
 

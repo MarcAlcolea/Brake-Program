@@ -175,6 +175,15 @@ class Thermal:
 
 
 @dataclass
+class Performance:
+    """Inputs for the stopping-distance / stopping-time estimate (constant-deceleration model)."""
+
+    initial_speed: float = 28.0      # m/s — speed at the start of the stop (~100 km/h)
+    stop_to_rest: bool = True        # — brake fully to a stop (0 m/s)
+    final_speed: float = 0.0         # m/s — speed to brake down to, used only if stop_to_rest is False
+
+
+@dataclass
 class VehicleConfig:
     """Complete brake-system configuration for one vehicle."""
 
@@ -191,6 +200,7 @@ class VehicleConfig:
     target_decel_g: float           # — design deceleration target [g]
     notes: str = ""
     thermal: Thermal = field(default_factory=Thermal)
+    performance: Performance = field(default_factory=Performance)
     assumed_inputs: list[str] = field(default_factory=list)
     # ^ dotted input paths the user has flagged as "assumed" (e.g. "caliper.piston_travel").
     #   Purely advisory: outputs that depend on an assumed input show a small warning. Saved with

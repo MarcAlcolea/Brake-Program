@@ -114,4 +114,17 @@ GROUPS: tuple[Group, ...] = (
                   "Eff Stroke + comp. + 3-3.5 mm"),
         ),
     ),
+    Group(
+        "Braking Performance",
+        (
+            Field("performance.initial_speed", "Initial Speed (stopping test)", "m/s", "float", 1, 120, 1,
+                  "Speed the car is doing when hard braking starts. Used for the stopping-distance and "
+                  "stopping-time estimate (switch the unit to km/h or mph to enter it that way)."),
+            Field("performance.stop_to_rest", "Brake to a full stop", "", "bool", note=
+                  "On: brake all the way to 0 (standard stopping distance). Off: brake down to the "
+                  "Final Speed below instead (e.g. entering a corner)."),
+            Field("performance.final_speed", "Final Speed", "m/s", "float", 0, 120, 1,
+                  "Speed at the end of braking. Used only when 'Brake to a full stop' is off."),
+        ),
+    ),
 )

@@ -38,11 +38,16 @@ _UNITS: dict[str, tuple[str, float]] = {
     "mm³": ("volume", 1e-9),
     "cm³": ("volume", 1e-6),
     "in³": ("volume", 1.6387064e-5),
+    # speed (base: metre/second)
+    "m/s": ("speed", 1.0),
+    "km/h": ("speed", 1.0 / 3.6),
+    "mph": ("speed", 0.44704),
 }
 
 # Display order preference within each dimension (metric first).
 _ORDER = ["m", "cm", "mm", "in", "kg", "g", "lb", "N", "lbf",
-          "MPa", "bar", "psi", "mm²", "cm²", "in²", "mm³", "cm³", "in³"]
+          "MPa", "bar", "psi", "mm²", "cm²", "in²", "mm³", "cm³", "in³",
+          "m/s", "km/h", "mph"]
 
 
 def compatible_units(unit: str) -> list[str]:
