@@ -45,6 +45,16 @@ def _slug(name: str) -> str:
     return slug or "config"
 
 
+def _set_rotor_material(config: VehicleConfig, name_contains: str) -> None:
+    """Apply a catalogued rotor material's properties (specific heat + emissivity) to a config."""
+    from ..components.catalog import MATERIALS
+
+    mat = next((m for m in MATERIALS if name_contains in m.name), None)
+    if mat is not None:
+        config.thermal.rotor_specific_heat = mat.specific_heat
+        config.thermal.emissivity = mat.emissivity
+
+
 class ConfigLibrary:
     """A folder of saved :class:`VehicleConfig` files, addressed by display name.
 
@@ -163,6 +173,7 @@ class ConfigLibrary:
         michigan.notes = "Original spreadsheet inputs (x2 outboarded rear). Default preset."
         michigan.target_decel_g = 1.3
         michigan.pedal_box.driver_force = 340.0
+        _set_rotor_material(michigan, "4130")  # team's preferred rotor material
         self.save(michigan)
 
         inboard = reference_configs.inboarded_x1()

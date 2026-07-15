@@ -61,12 +61,15 @@ class BalancePanel(QWidget):
             self._verdict.setText("Brake balance unavailable for these inputs.")
             return
         who = "Front" if bd.front_locks_first else "Rear"
-        if bd.usable_decel != float("inf"):
-            self._verdict.setText(
-                f"{who} axle locks first, at about {bd.usable_decel:.2f} g. "
-                "Below the ideal curve the front locks first (stable); above it the rear locks first.")
-        else:
-            self._verdict.setText(f"{who} axle is the first toward its grip limit.")
+        tail = (f"{who} axle locks first, at about {bd.usable_decel:.2f} g — "
+                if bd.usable_decel != float("inf") else f"{who} axle is the first toward its limit — ")
+        good = ("the stable outcome you want." if bd.front_locks_first
+                else "twitchy; raise front bias (or resize the rear) to bring the line down toward the "
+                     "grey curve.")
+        self._verdict.setText(
+            "Your brakes apply a fixed front:rear ratio, so the design plots as a straight line "
+            "(expected). The grey curve is the ideal split. Aim for your line just below it up to your "
+            f"target g, so the front locks first. {tail}{good}")
 
     def _draw(self) -> None:
         fg = "#e8e8e8" if theme.is_dark() else "#1a1a1a"
