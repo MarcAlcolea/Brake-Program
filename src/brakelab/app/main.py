@@ -46,6 +46,7 @@ from .panels.shared_info_panel import SharedInfoPanel
 from .plots.plot_panel import SensitivityPanel
 from .panels.material_panel import ThermalMaterialPanel
 from .panels.thermal_sim_panel import ThermalSimPanel
+from .panels.balance_panel import BalancePanel
 from .uikit import muted
 from .widgets import ClickableLabel, CollapsibleSection
 from . import forward_spec, thermal_spec
@@ -207,11 +208,13 @@ class MainWindow(QMainWindow):
 
         self._forward_status = ForwardStatusPanel(self.controller)
         self._forward_outputs = OutputsPanel(self.controller, groups=forward_spec.OUTPUT_GROUPS)
+        self._balance = BalancePanel(self.controller)
         right = QWidget()
         rv = QVBoxLayout(right)
         rv.setContentsMargins(4, 4, 4, 4)
         rv.addWidget(self._forward_status)
         rv.addWidget(self._forward_outputs)
+        rv.addWidget(CollapsibleSection("Brake balance diagram", self._balance, expanded=False))
         rv.addStretch(1)
         right_scroll = _scroll(right)
 
@@ -300,6 +303,7 @@ class MainWindow(QMainWindow):
             self._thermal_outputs.reset_highlights()
             self._forward_outputs.reset_highlights()
             self._thermal_sim.refresh()  # redraw the chart in the new theme's colours
+            self._balance.refresh()
             theme.style_checkboxes(self)  # re-apply the theme-aware indicator fill
             for lbl in self._desc_labels:  # refresh the muted colour for the new theme (palette-based)
                 muted(lbl, theme.muted_text())

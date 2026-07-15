@@ -679,6 +679,24 @@ def _forward_section(story: list, config: VehicleConfig, results: BrakeResults, 
     ]
     story.append(_table(overall, col_widths=[_CONTENT_W - 65 * mm, 40 * mm, 25 * mm], align_right_from=1))
 
+    # Brake balance diagram (front vs. rear brake force).
+    from ..core.balance import brake_balance
+
+    bd = brake_balance(config)
+    who = "front" if bd.front_locks_first else "rear"
+    limit_txt = (f"The {who} axle reaches its grip limit first, at about "
+                 f"{_num(bd.usable_decel, 2)} g." if bd.usable_decel != float("inf")
+                 else f"The {who} axle is the first toward its grip limit.")
+    balance_chart = _balance_chart(config)
+    if balance_chart is not None:
+        story.append(KeepTogether([
+            Paragraph("Brake balance", st["block"]),
+            Paragraph("Front vs. rear brake force. The grey curve is the ideal distribution (both axles "
+                      "locking together); the design's actual fixed front:rear split is the solid line. "
+                      f"Below the ideal curve the front locks first (stable). {limit_txt}", st["caption"]),
+            balance_chart,
+        ]))
+
     # Stopping distance & time + a speed-vs-distance curve.
     from ..core.performance import braking_speeds, stopping_from_config
 
@@ -770,6 +788,57 @@ def _stopping_chart(config: VehicleConfig, results: BrakeResults):
         img.hAlign = "LEFT"
         return img
     except Exception:  # noqa: BLE001 — a chart must never break the report
+        return None
+
+
+def _balance_chart(config: VehicleConfig):
+    """The brake balance diagram (front vs. rear brake force) as a reportlab Image, or None."""
+    try:
+        from io import BytesIO
+
+        from matplotlib.backends.backend_agg import FigureCanvasAgg
+        from matplotlib.figure import Figure
+
+        from ..core.balance import brake_balance
+
+        bd = brake_balance(config)
+        ink = "#1c1c1c"
+        fig = Figure(figsize=(6.4, 4.2), dpi=150)
+        FigureCanvasAgg(fig)
+        ax = fig.add_subplot(111)
+
+        ax.plot(bd.ideal_front, bd.ideal_rear, color="#8a8a8a", linewidth=1.4,
+                label="Ideal distribution")
+        ax.plot(bd.actual_front, bd.actual_rear, color=ink, linewidth=1.6, label="Actual (this design)")
+        # iso-deceleration lines: F_f + F_r = a·W
+        for a in bd.iso_decels:
+            total = a * bd.weight
+            ax.plot([0, total], [total, 0], color="#c2c2c2", linewidth=0.8, linestyle=":")
+            ax.annotate(f"{a:g} g", xy=(total * 0.02, total * 0.98), fontsize=6.5, color="#8a8a8a")
+        ax.plot([bd.op_front], [bd.op_rear], marker="o", color=ink, markersize=5,
+                label="Design pedal force")
+
+        top = max(max(bd.ideal_front, default=1), max(bd.ideal_rear, default=1), bd.op_front, bd.op_rear)
+        ax.set_xlim(0, top * 1.05)
+        ax.set_ylim(0, top * 1.05)
+        ax.set_xlabel("Front brake force (N)", fontsize=8, color=ink)
+        ax.set_ylabel("Rear brake force (N)", fontsize=8, color=ink)
+        ax.tick_params(colors=ink, labelsize=7)
+        for spine in ax.spines.values():
+            spine.set_color("#c9ced4")
+        ax.grid(True, alpha=0.25)
+        legend = ax.legend(fontsize=7, loc="upper right", frameon=False)
+        for text in legend.get_texts():
+            text.set_color(ink)
+        fig.tight_layout(pad=0.6)
+        buf = BytesIO()
+        fig.savefig(buf, format="png", facecolor="white")
+        buf.seek(0)
+        w = 130 * mm
+        img = Image(buf, width=w, height=w * 4.2 / 6.4)
+        img.hAlign = "LEFT"
+        return img
+    except Exception:  # noqa: BLE001
         return None
 
 
