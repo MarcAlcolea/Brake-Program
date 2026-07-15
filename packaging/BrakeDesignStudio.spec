@@ -19,6 +19,8 @@ a = Analysis(
     datas=[
         # Runtime window/taskbar icon (app.main reads it relative to the module).
         (str(ROOT / "src" / "brakelab" / "app" / "assets"), "brakelab/app/assets"),
+        # Default preset configs shipped with the app (library.seed_defaults reads these).
+        (str(ROOT / "src" / "brakelab" / "presets"), "brakelab/presets"),
     ],
     hiddenimports=[
         # The Qt canvas is imported inside GUI modules; make sure the hook machinery sees it.

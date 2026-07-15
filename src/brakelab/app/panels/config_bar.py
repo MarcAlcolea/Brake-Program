@@ -72,12 +72,8 @@ class ConfigBar(QWidget):
         menu.addAction("Rename…", self._rename)
         menu.addAction("Delete", self._delete)
         menu.addSeparator()
-        menu.addAction("Import…", self._import)
-        menu.addAction("Export to folder…", self._export)
-        menu.addSeparator()
-        team = menu.addMenu("Team library")
-        team.addAction("Set team folder…", self._set_team_folder)
-        team.addAction("Publish current setup to team", self._publish)
+        menu.addAction("Import config from file…", self._import)
+        menu.addAction("Export config to file…", self._export)
         more.setMenu(menu)
         row.addWidget(more)
         row.addStretch(1)
@@ -156,11 +152,6 @@ class ConfigBar(QWidget):
 
     def _delete(self) -> None:
         name = self._controller.config.name
-        if self._library.is_shared(name):
-            QMessageBox.information(
-                self, "Delete",
-                "This is a team preset. Delete it from the shared folder to remove it for everyone.")
-            return
         if len(self._library.names()) <= 1:
             QMessageBox.information(self, "Delete", "Keep at least one saved configuration.")
             return
@@ -171,59 +162,32 @@ class ConfigBar(QWidget):
         self._controller.replace_config(self._library.load(remaining[0]))
         self._reload_combo(select=remaining[0])
 
-    # --- team library ------------------------------------------------------------------------
-    def _set_team_folder(self) -> None:
-        start = str(self._library.shared_dir) if self._library.shared_dir else str(Path.home())
-        path = QFileDialog.getExistingDirectory(
-            self, "Choose the shared team folder (synced via Dropbox, Google Drive, Git…)", start)
-        if not path:
-            return
-        self._library.set_shared_dir(path)
-        self._reload_combo(select=self._controller.config.name)
-        QMessageBox.information(
-            self, "Team library",
-            f"Team folder set to:\n{path}\n\nSaved setups in that folder now appear in the list. "
-            "Use 'Publish current setup to team' to share the current one.")
-
-    def _publish(self) -> None:
-        if not self._library.shared_configured:
-            if QMessageBox.question(
-                    self, "Team library",
-                    "No team folder is set yet. Choose one now?") != QMessageBox.Yes:
-                return
-            self._set_team_folder()
-            if not self._library.shared_configured:
-                return
-        try:
-            self._library.publish(self._controller.config)
-        except Exception as exc:  # noqa: BLE001
-            QMessageBox.critical(self, "Publish failed", str(exc))
-            return
-        self._reload_combo(select=self._controller.config.name)
-        QMessageBox.information(
-            self, "Team library",
-            f"Published '{self._controller.config.name}' to the team folder. Teammates who point at "
-            "the same folder will see it.")
-
     def _import(self) -> None:
-        path, _ = QFileDialog.getOpenFileName(self, "Import configuration", str(Path.home()), "JSON (*.json)")
+        """Load a config file a teammate sent you and add it to your library."""
+        path, _ = QFileDialog.getOpenFileName(
+            self, "Import a config file someone shared", str(Path.home()), "Config files (*.json)")
         if not path:
             return
         try:
-            config = load_config(path)
+            config = self._library.import_file(path)
         except Exception as exc:  # noqa: BLE001
             QMessageBox.critical(self, "Import failed", str(exc))
             return
-        self._library.save(config)
         self._controller.replace_config(config)
         self._reload_combo(select=config.name)
+        QMessageBox.information(self, "Imported", f"Added '{config.name}' to your library.")
 
     def _export(self) -> None:
+        """Save the current setup to a .json file you can send to a teammate (e.g. by email)."""
         default = f"{self._controller.config.name}.json"
-        path, _ = QFileDialog.getSaveFileName(self, "Export configuration", str(Path.home() / default), "JSON (*.json)")
+        path, _ = QFileDialog.getSaveFileName(
+            self, "Export this setup to a file to share", str(Path.home() / default), "Config files (*.json)")
         if path:
             save_config(self._controller.config, path)
-            QMessageBox.information(self, "Exported", f"Saved to {path}")
+            QMessageBox.information(
+                self, "Exported",
+                f"Saved to {path}\n\nSend this file to a teammate; they can add it with "
+                "'Import config from file'.")
 
     def _confirm(self, name: str) -> bool:
         return QMessageBox.question(self, "Overwrite", f"'{name}' already exists. Overwrite?") == QMessageBox.Yes

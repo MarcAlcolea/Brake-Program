@@ -44,6 +44,40 @@ in the app folder, so you can replace the app with a newer version and keep all 
 
 ---
 
+## Saving & sharing configurations
+
+A "configuration" (or preset) is one saved vehicle setup. The app keeps your presets in the
+**Configuration** dropdown at the top of the Main / Simulator tabs, and they live in your own user
+account (not in the app folder), so updating the app never loses them.
+
+**The app comes with the team's default presets built in.** When you download a Release, the standard
+setups (e.g. *2027 Michigan Car*) are already there on first launch.
+
+### Save a setup
+- **Save** overwrites the current preset. **Save As…** makes a new one under a new name.
+
+### Send a setup to a teammate (e.g. by email)
+1. Select or create the setup you want to share.
+2. Click the **⋯** menu (next to Save) → **Export config to file…**.
+3. Save the small `.json` file somewhere easy (your Desktop), then **email/message that file** to whoever you like.
+
+### Load a setup someone sent you
+1. Save the `.json` file they sent you (e.g. to your Desktop).
+2. **⋯** menu → **Import config from file…** → pick that `.json`.
+3. It's added to your library and opened — you're now looking at their exact setup.
+
+### Make a setup a built-in default (for the maintainer)
+So a new preset ships with the app and appears for everyone who downloads the Release:
+1. In the app, **Export config to file…** to get its `.json`.
+2. Put that file in **`src/brakelab/presets/`** in this repo and commit it.
+3. Cut a release (tag `vX.Y.Z`). New downloads get it automatically; people who already have the app
+   get it added on their next launch (their own saved setups are never overwritten).
+
+> No shared/cloud folder, Dropbox, or account is needed — sharing is just sending a file, and the
+> built-in defaults travel with the app itself (bundled from `src/brakelab/presets/`).
+
+---
+
 ## Repository layout (for developers)
 
 If you cloned the source, here is what every folder is:
