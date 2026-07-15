@@ -19,7 +19,7 @@ from .units import GRAVITY
 def braking_speeds(config: VehicleConfig) -> tuple[float, float]:
     """(initial, final) speed [m/s] for the stopping estimate; final is 0 when stopping to rest."""
     p = config.performance
-    return p.initial_speed, (0.0 if p.stop_to_rest else p.final_speed)
+    return p.initial_speed, (p.final_speed if p.custom_final_speed else 0.0)
 
 
 def stopping_distance_time(initial_speed: float, final_speed: float, decel_g: float,
@@ -42,3 +42,21 @@ def stopping_from_config(config: VehicleConfig, decel_g: float,
     """Stopping distance [m] and time [s] for ``config``'s braking-test speeds at ``decel_g`` g."""
     vi, vf = braking_speeds(config)
     return stopping_distance_time(vi, vf, decel_g, gravity)
+
+
+def speed_profile(initial_speed: float, final_speed: float, decel_g: float,
+                  gravity: float = GRAVITY, n: int = 60) -> tuple[list[float], list[float]]:
+    """(distance[m], speed[m/s]) points along a constant-decel stop, for a speed-vs-distance plot."""
+    a = decel_g * gravity
+    if a <= 0:
+        return [0.0], [max(initial_speed, 0.0)]
+    vi = max(initial_speed, 0.0)
+    vf = min(max(final_speed, 0.0), vi)
+    total = (vi * vi - vf * vf) / (2.0 * a)
+    xs, vs = [], []
+    for i in range(n + 1):
+        x = total * i / n
+        v2 = max(vi * vi - 2.0 * a * x, 0.0)
+        xs.append(x)
+        vs.append(v2 ** 0.5)
+    return xs, vs

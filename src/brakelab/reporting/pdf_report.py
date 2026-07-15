@@ -684,16 +684,22 @@ def _forward_section(story: list, config: VehicleConfig, results: BrakeResults, 
 
     bd = brake_balance(config)
     who = "front" if bd.front_locks_first else "rear"
-    limit_txt = (f"The {who} axle reaches its grip limit first, at about "
+    limit_txt = (f"Here the <b>{who}</b> axle reaches its limit first, at about "
                  f"{_num(bd.usable_decel, 2)} g." if bd.usable_decel != float("inf")
-                 else f"The {who} axle is the first toward its grip limit.")
+                 else f"Here the <b>{who}</b> axle is the first toward its limit.")
+    verdict = ("That's the stable outcome you want." if bd.front_locks_first
+               else "That's twitchy — to fix it, raise front bias (or resize the rear) to bring the "
+                    "line down closer to (just below) the grey curve.")
     balance_chart = _balance_chart(config)
     if balance_chart is not None:
         story.append(KeepTogether([
             Paragraph("Brake balance", st["block"]),
-            Paragraph("Front vs. rear brake force. The grey curve is the ideal distribution (both axles "
-                      "locking together); the design's actual fixed front:rear split is the solid line. "
-                      f"Below the ideal curve the front locks first (stable). {limit_txt}", st["caption"]),
+            Paragraph(
+                "<b>How to read it:</b> your brakes apply a fixed front:rear ratio, so the design always "
+                "plots as a straight line through the origin — that's expected, not a problem. The grey "
+                "curve is the ideal split where both axles would lock together. You want your line to sit "
+                "just <i>below</i> the grey curve up to your target deceleration, so the FRONT reaches its "
+                f"grip limit first (a controllable lock-up). {limit_txt} {verdict}", st["caption"]),
             balance_chart,
         ]))
 
@@ -703,15 +709,17 @@ def _forward_section(story: list, config: VehicleConfig, results: BrakeResults, 
     vi, vf = braking_speeds(config)
     da, ta = stopping_from_config(config, fwd.actual_decel_g)
     dt, tt = stopping_from_config(config, config.target_decel_g)
-    to_txt = "to a stop" if config.performance.stop_to_rest else f"to {_num(vf * 3.6, 0)} km/h"
+    to_txt = f"to {_num(vf * 3.6, 0)} km/h" if config.performance.custom_final_speed else "to a stop"
     stop_block = [
         Paragraph("Stopping distance", st["block"]),
         Paragraph(f"Braking from {_num(vi * 3.6, 0)} km/h ({_num(vi, 1)} m/s) {to_txt}, "
-                  "constant-deceleration model.", st["caption"]),
+                  "constant-deceleration model. <b>Actual</b> uses the deceleration this pedal force "
+                  "produces; <b>design target</b> uses the target deceleration set for the design.",
+                  st["caption"]),
         _table([
             ["", "Distance [m]", "Time [s]"],
-            ["At actual decel", _num(da, 1), _num(ta, 2)],
-            ["At target decel", _num(dt, 1), _num(tt, 2)],
+            [f"Actual ({_num(fwd.actual_decel_g, 2)} g)", _num(da, 1), _num(ta, 2)],
+            [f"Design target ({_num(config.target_decel_g, 2)} g)", _num(dt, 1), _num(tt, 2)],
         ], col_widths=[_CONTENT_W - 90 * mm, 45 * mm, 45 * mm], align_right_from=1),
     ]
     chart = _stopping_chart(config, results)
@@ -767,7 +775,7 @@ def _stopping_chart(config: VehicleConfig, results: BrakeResults):
         xt, yt = _speed_curve(vi, vf, config.target_decel_g)
         ax.plot(xa, ya, color=ink, linewidth=1.5, label=f"Actual ({_num(fwd.actual_decel_g, 2)} g)")
         ax.plot(xt, yt, color=ink, linewidth=1.1, linestyle="--",
-                label=f"Target ({_num(config.target_decel_g, 2)} g)")
+                label=f"Design target ({_num(config.target_decel_g, 2)} g)")
         ax.set_xlabel("Distance (m)", fontsize=8, color=ink)
         ax.set_ylabel("Speed (km/h)", fontsize=8, color=ink)
         ax.tick_params(colors=ink, labelsize=7)

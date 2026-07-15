@@ -8,6 +8,7 @@ Field definitions are reused verbatim from ``field_spec`` to avoid a second, dri
 
 from __future__ import annotations
 
+from .field_spec import BRAKING_FIELDS
 from .field_spec import GROUPS as _MAIN_GROUPS
 from .field_spec import Group
 from .output_spec import OutputGroup, _o
@@ -52,18 +53,13 @@ INPUT_GROUPS: tuple[Group, ...] = (
             "mass.front_weight_fraction",
         ),
     ),
+    Group("Braking Test (stopping distance)", BRAKING_FIELDS),
 )
 
 
 # ---- Forward outputs (rendered with the shared OutputsPanel, so each row gets an ⓘ) -------------
 def _f(r):
     return r.forward
-
-
-def _stopping(r, c):
-    from ..core.performance import stopping_from_config
-
-    return stopping_from_config(c, _f(r).actual_decel_g)
 
 
 OUTPUT_GROUPS: tuple[OutputGroup, ...] = (
@@ -100,14 +96,6 @@ OUTPUT_GROUPS: tuple[OutputGroup, ...] = (
             _o("Total stopping force (F(stop))", "N", "F(stop) = (T(axle,f) + T(axle,r)) / R(tire)",
                "Total longitudinal braking force at the tyre contact patches.",
                lambda r, c: _f(r).stopping_force),
-            _o("Stopping Distance (actual)", "m", "d = (v_i^2 - v_f^2) / (2 * a),  a = actual decel * g",
-               "How far the car travels braking from the Initial Speed at the ACTUAL deceleration this "
-               "pedal force produces (constant-decel model). If an axle locks, real decel is grip-"
-               "limited and the true distance is longer — see the Lock-Up Check.",
-               lambda r, c: _stopping(r, c)[0]),
-            _o("Stopping Time (actual)", "s", "t = (v_i - v_f) / a,  a = actual decel * g",
-               "How long the stop takes at the actual deceleration.",
-               lambda r, c: _stopping(r, c)[1]),
         ),
     ),
     OutputGroup(

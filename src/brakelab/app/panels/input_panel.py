@@ -38,6 +38,8 @@ class InputPanel(QWidget):
         self._editors: dict[str, QWidget] = {}
         self._assumed_boxes: dict[str, QCheckBox] = {}
         self._display_unit: dict[str, str] = {}
+        self._row_widgets: dict[str, list[QWidget]] = {}   # path -> [label, editor, unit] to grey together
+        self._conditional: dict[str, tuple] = {}           # path -> (other_path, required value)
 
         if groups is None:
             from ..field_spec import GROUPS
@@ -61,12 +63,18 @@ class InputPanel(QWidget):
             header.setToolTip("Tick to mark a value as assumed; results that depend on it are flagged with *")
             grid.addWidget(header, 0, 3, Qt.AlignHCenter)
             for row, field in enumerate(group.fields, start=1):
-                grid.addWidget(QLabel(field.label), row, 0)
-                grid.addWidget(self._make_editor(field), row, 1)
-                grid.addWidget(self._make_unit_widget(field), row, 2)
+                label = QLabel(field.label)
+                editor = self._make_editor(field)
+                unit = self._make_unit_widget(field)
+                grid.addWidget(label, row, 0)
+                grid.addWidget(editor, row, 1)
+                grid.addWidget(unit, row, 2)
                 grid.addWidget(self._make_assumed_box(field), row, 3, Qt.AlignHCenter)
                 if field.note:
                     grid.addWidget(InfoButton(field.label, field.note), row, 4)
+                self._row_widgets[field.path] = [label, editor, unit]
+                if getattr(field, "enabled_when", None):
+                    self._conditional[field.path] = field.enabled_when
             layout.addWidget(CollapsibleSection(group.title, content, expanded=expanded))
         layout.addStretch(1)
 
@@ -74,6 +82,7 @@ class InputPanel(QWidget):
         # Also refresh when values change without a whole new config — e.g. picking a Component fills
         # the bore/area inputs, and the optimizer can load a design. Editors must reflect that live.
         controller.resultsChanged.connect(self._reload_from_config)
+        self._apply_conditional()
 
     def _make_editor(self, field) -> QWidget:
         value = self._controller.value(field.path)
@@ -152,3 +161,14 @@ class InputPanel(QWidget):
             box.blockSignals(True)
             box.setChecked(self._controller.is_assumed(path))
             box.blockSignals(False)
+        self._apply_conditional()
+
+    def _apply_conditional(self) -> None:
+        """Grey out (disable) any field whose ``enabled_when`` condition is not currently met."""
+        for path, (other_path, wanted) in self._conditional.items():
+            try:
+                enabled = self._controller.value(other_path) == wanted
+            except Exception:  # noqa: BLE001 — a bad path just leaves the field enabled
+                enabled = True
+            for widget in self._row_widgets.get(path, []):
+                widget.setEnabled(enabled)

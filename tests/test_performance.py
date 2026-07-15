@@ -37,7 +37,7 @@ def test_final_speed_clamped_to_initial():
 def test_stopping_from_config_uses_toggle():
     c = reference_configs.outboarded_x2()
     c.performance.initial_speed = 30.0
-    c.performance.stop_to_rest = False
+    c.performance.custom_final_speed = True
     c.performance.final_speed = 12.0
     d, _ = stopping_from_config(c, 1.2)
     d_ref, _ = stopping_distance_time(30.0, 12.0, 1.2)
@@ -47,11 +47,11 @@ def test_stopping_from_config_uses_toggle():
 def test_performance_round_trips_through_json():
     c = reference_configs.outboarded_x2()
     c.performance.initial_speed = 33.3
-    c.performance.stop_to_rest = False
+    c.performance.custom_final_speed = True
     c.performance.final_speed = 8.0
     back = config_from_dict(config_to_dict(c))
     assert back.performance.initial_speed == 33.3
-    assert back.performance.stop_to_rest is False
+    assert back.performance.custom_final_speed is True
     assert back.performance.final_speed == 8.0
 
 
@@ -61,4 +61,4 @@ def test_old_config_without_performance_still_loads():
     del data["performance"]  # simulate a config saved before the feature existed
     back = config_from_dict(data)
     assert back.performance.initial_speed == 28.0  # default
-    assert back.performance.stop_to_rest is True
+    assert back.performance.custom_final_speed is False

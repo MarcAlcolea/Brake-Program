@@ -23,6 +23,8 @@ class Field:
     note: str = ""       # the spreadsheet's own comment for this input (verbatim)
     fixed_unit: bool = False  # if True, show the unit as a static label with no conversion dropdown
     #                           (e.g. "g" here is a g-force ratio, not grams — must not be converted)
+    enabled_when: tuple | None = None  # (other_path, value): editable only while that field equals value
+    #                                    (e.g. a final-speed box greyed out unless a toggle is on)
 
 
 @dataclass(frozen=True)
@@ -114,17 +116,23 @@ GROUPS: tuple[Group, ...] = (
                   "Eff Stroke + comp. + 3-3.5 mm"),
         ),
     ),
-    Group(
-        "Braking Performance",
-        (
-            Field("performance.initial_speed", "Initial Speed (stopping test)", "m/s", "float", 1, 120, 1,
-                  "Speed the car is doing when hard braking starts. Used for the stopping-distance and "
-                  "stopping-time estimate (switch the unit to km/h or mph to enter it that way)."),
-            Field("performance.stop_to_rest", "Brake to a full stop", "", "bool", note=
-                  "On: brake all the way to 0 (standard stopping distance). Off: brake down to the "
-                  "Final Speed below instead (e.g. entering a corner)."),
-            Field("performance.final_speed", "Final Speed", "m/s", "float", 0, 120, 1,
-                  "Speed at the end of braking. Used only when 'Brake to a full stop' is off."),
-        ),
-    ),
+)
+
+
+# Braking-test inputs for the stopping-distance/time estimate. These are NOT in GROUPS (so they don't
+# clutter the Main design tab); they are shown on the Simulator tab, next to the stopping-distance
+# output, via ``forward_spec``. They're test parameters, not design parameters — changing them does
+# not mark the setup as edited (see ConfigBar._config_equal).
+BRAKING_FIELDS: tuple[Field, ...] = (
+    Field("performance.initial_speed", "Initial Speed (stopping test)", "m/s", "float", 1, 120, 1,
+          "Speed the car is doing when hard braking starts. Used for the stopping-distance and "
+          "stopping-time estimate (switch the unit to km/h or mph to enter it that way). This is just a "
+          "test speed — changing it does not alter the design or mark the setup as edited."),
+    Field("performance.custom_final_speed", "Brake to a custom final speed", "", "bool", note=
+          "Off (default): the stop goes all the way to 0 (standard stopping distance). "
+          "On: brake down to the Final Speed below instead (e.g. slowing for a corner) — the Final "
+          "Speed box is only editable when this is on."),
+    Field("performance.final_speed", "Final Speed", "m/s", "float", 0, 120, 1,
+          "Speed at the end of braking. Editable only when 'Brake to a custom final speed' is on.",
+          enabled_when=("performance.custom_final_speed", True)),
 )

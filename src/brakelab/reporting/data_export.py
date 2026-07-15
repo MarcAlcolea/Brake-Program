@@ -61,6 +61,14 @@ def export_csv(config: VehicleConfig, results: BrakeResults, path: str | Path) -
                 for out in group.outputs:
                     w.writerow([f"Output (performance) — {group.title}", out.label,
                                 _output_value(out, results, config), out.unit])
+            from ..core.performance import stopping_from_config
+
+            da, ta = stopping_from_config(config, results.forward.actual_decel_g)
+            dt, tt = stopping_from_config(config, config.target_decel_g)
+            w.writerow(["Stopping — actual", "Stopping distance", f"{da:.2f}", "m"])
+            w.writerow(["Stopping — actual", "Stopping time", f"{ta:.3f}", "s"])
+            w.writerow(["Stopping — design target", "Stopping distance", f"{dt:.2f}", "m"])
+            w.writerow(["Stopping — design target", "Stopping time", f"{tt:.3f}", "s"])
 
         for req in getattr(results, "requirements", ()) or ():
             status = "PASS" if req.passed else ("FAIL" if req.hard else "OFF TARGET")

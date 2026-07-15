@@ -29,10 +29,15 @@ _CUSTOM = "Custom"  # shown when the live config no longer matches its saved pre
 
 
 def _config_equal(a, b) -> bool:
-    """Two configs are 'the same preset' if everything but the display name matches."""
+    """Two configs are 'the same preset' if everything but the display name matches.
+
+    The ``performance`` block (initial/final speed for the stopping-distance test) is ignored: those
+    are just test inputs, so changing them must not mark the setup as edited / 'Custom'. They still
+    save with the preset as its per-config defaults."""
     da, db = config_to_dict(a), config_to_dict(b)
-    da.pop("name", None)
-    db.pop("name", None)
+    for key in ("name", "performance"):
+        da.pop(key, None)
+        db.pop(key, None)
     return da == db
 
 

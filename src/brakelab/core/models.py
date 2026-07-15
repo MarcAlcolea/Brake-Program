@@ -179,8 +179,8 @@ class Performance:
     """Inputs for the stopping-distance / stopping-time estimate (constant-deceleration model)."""
 
     initial_speed: float = 28.0      # m/s — speed at the start of the stop (~100 km/h)
-    stop_to_rest: bool = True        # — brake fully to a stop (0 m/s)
-    final_speed: float = 0.0         # m/s — speed to brake down to, used only if stop_to_rest is False
+    custom_final_speed: bool = False  # — brake down to final_speed instead of a full stop (0 m/s)
+    final_speed: float = 0.0         # m/s — speed to brake down to, used only if custom_final_speed
 
 
 @dataclass

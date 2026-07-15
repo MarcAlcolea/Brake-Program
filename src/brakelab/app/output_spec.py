@@ -12,7 +12,6 @@ from dataclasses import dataclass
 from typing import Callable
 
 from ..core.models import VehicleConfig
-from ..core.performance import stopping_from_config
 from ..core.results import BrakeResults
 
 
@@ -159,19 +158,5 @@ GROUPS: tuple[OutputGroup, ...] = (
                "Target value at which BOTS should trigger (also a hardstop)",
                lambda r, c: r.pedal_travel.bots_trigger),
         ),
-    ),
-    OutputGroup(
-        "Stopping Performance (at target decel)",
-        (
-            _o("Stopping Distance (target)", "m", "d = (v_i^2 - v_f^2) / (2 * a),  a = target decel * g",
-               "How far the car travels braking from the Initial Speed at the DESIGN target "
-               "deceleration (constant-decel model). The forward Simulator shows the same figure at the "
-               "actual achievable deceleration.",
-               lambda r, c: stopping_from_config(c, c.target_decel_g)[0]),
-            _o("Stopping Time (target)", "s", "t = (v_i - v_f) / a,  a = target decel * g",
-               "How long the stop takes at the design target deceleration.",
-               lambda r, c: stopping_from_config(c, c.target_decel_g)[1]),
-        ),
-        expanded=False,
     ),
 )
