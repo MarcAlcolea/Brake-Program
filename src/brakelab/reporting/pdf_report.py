@@ -468,6 +468,34 @@ class _Sections:
 # =============================================================================================
 # Sections
 # =============================================================================================
+def _selected_components(config: VehicleConfig) -> list[tuple[str, str]]:
+    """Best-effort match of the config's values to real catalogued parts (brand + model), so the
+    report names the hardware. Falls back to "Custom — <value>" when nothing in the catalog matches."""
+    from ..components import catalog
+
+    h, cal, pad, th = config.hydraulics, config.caliper, config.pad, config.thermal
+
+    def nm(spec, fallback: str) -> str:
+        return spec.name if spec is not None else fallback
+
+    mc_f = catalog.match_master_cylinder(h.mc_bore_front)
+    mc_r = catalog.match_master_cylinder(h.mc_bore_rear)
+    same_mc = mc_f is not None and mc_r is not None and mc_f.name == mc_r.name
+    rows: list[tuple[str, str]] = []
+    if same_mc:
+        rows.append(("Master cylinder (front & rear)", mc_f.name))
+    else:
+        rows.append(("Master cylinder, front", nm(mc_f, f"Custom — {h.mc_bore_front:.2f} mm bore")))
+        rows.append(("Master cylinder, rear", nm(mc_r, f"Custom — {h.mc_bore_rear:.2f} mm bore")))
+    rows.append(("Caliper", nm(catalog.match_caliper(cal.piston_area, cal.n_pistons),
+                                f"Custom — {cal.n_pistons} × {cal.piston_area:.0f} mm² piston")))
+    rows.append(("Brake pad", nm(catalog.match_pad(pad.friction_coefficient),
+                                  f"Custom — μ {pad.friction_coefficient:.2f}")))
+    rows.append(("Rotor material", nm(catalog.match_material(th.rotor_specific_heat, th.emissivity),
+                                       "Custom")))
+    return rows
+
+
 def _field_value(config: VehicleConfig, field_spec) -> str:
     v = get_by_path(config, field_spec.path)
     if field_spec.kind == "bool":
@@ -546,6 +574,10 @@ def _design_section(story: list, config: VehicleConfig, results: BrakeResults, s
         [lbl("Driver force", "pedal_box.driver_force"), _num(pb.driver_force, 1), "N"],
     ]
     story.append(_table(inputs, col_widths=[_CONTENT_W - 65 * mm, 40 * mm, 25 * mm], align_right_from=1))
+
+    story.append(Paragraph("Selected components", st["block"]))
+    comp_rows = [["Component", "Selected part"]] + [list(r) for r in _selected_components(config)]
+    story.append(_table(comp_rows, col_widths=[60 * mm, _CONTENT_W - 60 * mm]))
 
     d, tq, s, h, p = results.dynamics, results.torque, results.sizing, results.hydraulics, results.pedal_travel
     story.append(Paragraph("Key results — front &amp; rear", st["block"]))
