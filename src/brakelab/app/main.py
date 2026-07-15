@@ -51,7 +51,7 @@ from .uikit import muted
 from .widgets import ClickableLabel, CollapsibleSection
 from . import forward_spec, thermal_spec
 
-_PAGES = ["Main", "Simulator", "Thermal", "Optimize", "Compare", "Sensitivity", "Report"]
+_PAGES = ["Main", "Simulator", "Thermal", "Optimize", "Compare", "Sensitivity", "Export / Report"]
 
 
 class MainWindow(QMainWindow):
@@ -87,7 +87,7 @@ class MainWindow(QMainWindow):
             "Sensitivity — see which inputs most affect a chosen output, so you know what to tune.",
             SensitivityPanel(self.controller)))
         self._stack.addWidget(self._framed(
-            "Report — build a customised PDF engineering report of the design.", self._report))
+            "Export / Report — build a customised PDF engineering report, or export the data as CSV.", self._report))
 
         central = QWidget()
         row = QHBoxLayout(central)
@@ -128,8 +128,8 @@ class MainWindow(QMainWindow):
         self._update_theme_button()
         v.addWidget(self._theme_btn)
 
-        export = QPushButton("Report…")
-        export.clicked.connect(lambda: self._select_page(_PAGES.index("Report")))
+        export = QPushButton("Export / Report…")
+        export.clicked.connect(lambda: self._select_page(_PAGES.index("Export / Report")))
         v.addWidget(export)
         return panel
 
@@ -158,7 +158,7 @@ class MainWindow(QMainWindow):
             self._compare.reload_configs()
         elif name == "Optimize":
             self._optimize.refresh_current()
-        elif name == "Report":
+        elif name == "Export / Report":
             self._report.reload()
 
     # ---- design page ------------------------------------------------------------------------

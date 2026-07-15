@@ -30,7 +30,7 @@ from PySide6.QtWidgets import (
 
 from ...core.engine import BrakeEngine
 from ...persistence import ConfigLibrary
-from ...reporting import ReportOptions, build_report
+from ...reporting import ReportOptions, build_report, export_csv
 from .. import theme
 from ..controller import ProjectController
 from ..uikit import muted, style_combo
@@ -72,6 +72,12 @@ class ReportTab(QWidget):
         generate.clicked.connect(self._generate)
         self._v.addSpacing(6)
         self._v.addWidget(generate)
+
+        export = QPushButton("Export data (CSV)…")
+        export.clicked.connect(self._export_csv)
+        self._v.addWidget(export)
+        self._hint("CSV opens in Excel — a full dump of the chosen setup's inputs, outputs, "
+                   "requirements and components for teammates.")
         self._v.addStretch(1)
 
         self.reload()
@@ -296,3 +302,16 @@ class ReportTab(QWidget):
             QMessageBox.critical(self, "Report failed", str(exc))
             return
         QMessageBox.information(self, "Report generated", f"Saved to {path}")
+
+    def _export_csv(self) -> None:
+        config, results = self._chosen_config_and_results()
+        default = f"{config.name}.csv"
+        path, _ = QFileDialog.getSaveFileName(self, "Export data as CSV", default, "CSV (*.csv)")
+        if not path:
+            return
+        try:
+            export_csv(config, results, path)
+        except Exception as exc:  # noqa: BLE001
+            QMessageBox.critical(self, "Export failed", str(exc))
+            return
+        QMessageBox.information(self, "Data exported", f"Saved to {path}")
