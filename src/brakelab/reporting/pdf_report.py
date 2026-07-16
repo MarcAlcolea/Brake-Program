@@ -505,21 +505,34 @@ def _field_value(config: VehicleConfig, field_spec) -> str:
     return f"{float(v):,.{field_spec.decimals}f}"
 
 
+_ASSUMED_TAG = ' <font size="6.5" color="#8f8f8f">(assumed)</font>'
+
+
+def _input_label(text: str, is_assumed: bool, st, style: str = "cell") -> Paragraph:
+    """A table label cell that shows a small, muted '(assumed)' tag when the input is an assumption."""
+    return Paragraph(f"{text}{_ASSUMED_TAG}" if is_assumed else text, st[style])
+
+
+def _assumed_note(story: list, st) -> None:
+    story.append(Paragraph("Inputs tagged (assumed) are assumptions, not measured/confirmed values — "
+                           "treat results that depend on them as provisional.", st["muted"]))
+
+
 def _full_inputs(story: list, config: VehicleConfig, st) -> None:
-    """Every input, phase by phase, in a compact quiet listing (assumed values flagged with *)."""
+    """Every input, phase by phase, in a compact quiet listing (assumed values tagged)."""
     assumed = set(config.assumed_inputs)
     story.append(Paragraph("Full input listing", st["block"]))
     for group in INPUT_GROUPS:
         story.append(Paragraph(group.title, st["phase"]))
         rows = [["Parameter", "Value", "Unit"]]
         for spec in group.fields:
-            label = spec.label + (" *" if spec.path in assumed else "")
-            rows.append([_P(label, st, "cell_muted"), _field_value(config, spec), _unit_text(spec.unit)])
+            rows.append([_input_label(spec.label, spec.path in assumed, st, "cell_muted"),
+                         _field_value(config, spec), _unit_text(spec.unit)])
         story.append(_table(rows, col_widths=[_CONTENT_W - 55 * mm, 30 * mm, 25 * mm],
                             compact=True, align_right_from=1))
     if assumed:
         story.append(Spacer(1, 1.5 * mm))
-        story.append(Paragraph("* marked as assumed — dependent results are provisional.", st["muted"]))
+        _assumed_note(story, st)
     story.append(Spacer(1, 3 * mm))
 
 
@@ -549,11 +562,10 @@ def _design_section(story: list, config: VehicleConfig, results: BrakeResults, s
     assumed = set(config.assumed_inputs)
     shown_assumed: set[str] = set()
 
-    def lbl(text: str, path: str) -> str:
+    def lbl(text: str, path: str):
         if path in assumed:
             shown_assumed.add(path)
-            return text + " *"
-        return text
+        return _input_label(text, path in assumed, st)
 
     story.append(Paragraph("Key inputs", st["block"]))
     inputs = [
@@ -606,8 +618,7 @@ def _design_section(story: list, config: VehicleConfig, results: BrakeResults, s
     ]
     story.append(_table(summary, col_widths=[_CONTENT_W - 65 * mm, 40 * mm, 25 * mm], align_right_from=1))
     if shown_assumed:
-        story.append(Paragraph("* value marked as assumed — dependent results should be treated as provisional.",
-                               st["muted"]))
+        _assumed_note(story, st)
 
     # Requirements — front and centre.
     if getattr(results, "requirements", None):
