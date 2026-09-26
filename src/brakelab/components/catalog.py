@@ -78,8 +78,9 @@ CALIPERS: list[CaliperSpec] = [
 BRAKE_PADS: list[PadSpec] = [
     PadSpec("Wilwood PolyMatrix BP-10", 0.45, note="approximate; verify."),
     PadSpec("Wilwood PolyMatrix BP-20", 0.55, note="approximate; verify."),
-    PadSpec("Wilwood PolyMatrix BP-28", 0.48, note="conservative average from the team's spreadsheet."),
+    PadSpec("Wilwood PolyMatrix BP-28", 0.48, note="optimisitc value from the team's spreadsheet."),
     PadSpec("Wilwood PolyMatrix BP-40", 0.62, note="approximate; verify."),
+    PadSpec("Wilwood PolyMatrix PURPLE", 0.35, note="added by Marc Alcolea, pessimistic estimate"),
 ]
 
 # Rotor materials — properties from reference/Brake Rotors Simulations 2026.docx ("What are the
