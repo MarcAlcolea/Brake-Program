@@ -101,10 +101,23 @@ edit it there. To add a new phase:
 
 ## 5. How to add a real COMPONENT
 
+Users of the downloaded app can add parts with **Components → Manage components… → New…**,
+or save their active input values from a dropdown's **⋯** menu. The user library lives in
+`Brake Design Studio/components`; Import/Export share versioned `.component.json` files.
+`components/library.py` validates the format, merges custom parts with the built-in catalog,
+and supplies the optimizer's available bores. Setup schema v2 carries component snapshots so
+shared cars retain their part names and values without needing the recipient's library.
+
+To ship a new **built-in default** for every release:
+
 Edit `src/brakelab/components/catalog.py` — it's plain data. Append a `MasterCylinderSpec`,
 `CaliperSpec`, or `PadSpec` to the relevant list. It immediately appears in the Design tab dropdown
 and (for master cylinders) as a discrete option the optimizer can choose from. **Verify specs against
 the manufacturer datasheet** — some current entries are marked approximate.
+
+The Purple pad is also exported in `packaging/components/Wilwood_PURPLE.component.json` and
+attached by the release workflow. If its catalog data changes, regenerate that file with
+`builtins()` / `save_component()` from `components.library`; a test checks that both match.
 
 ## 6. How to add an OPTIMIZATION metric, constraint, or algorithm
 

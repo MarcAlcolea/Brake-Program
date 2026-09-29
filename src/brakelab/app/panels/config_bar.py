@@ -22,6 +22,7 @@ from PySide6.QtWidgets import (
 )
 
 from ...persistence import ConfigLibrary, config_to_dict, load_config, save_config
+from ...components.library import SLOTS, selected_component
 from ..controller import ProjectController
 from ..uikit import style_combo
 
@@ -35,6 +36,12 @@ def _config_equal(a, b) -> bool:
     are just test inputs, so changing them must not mark the setup as edited / 'Custom'. They still
     save with the preset as its per-config defaults."""
     da, db = config_to_dict(a), config_to_dict(b)
+    # Capturing the identity of an old preset must not mark it as edited on first load.
+    for data, config in ((da, a), (db, b)):
+        data["component_selections"] = {}
+        for slot in SLOTS:
+            part = selected_component(config, slot)
+            data["component_selections"][slot] = part.to_dict() if part else None
     for key in ("name", "performance"):
         da.pop(key, None)
         db.pop(key, None)

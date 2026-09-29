@@ -202,6 +202,9 @@ class VehicleConfig:
     thermal: Thermal = field(default_factory=Thermal)
     performance: Performance = field(default_factory=Performance)
     assumed_inputs: list[str] = field(default_factory=list)
+    # Portable snapshots keyed by component position. None explicitly means manual/Custom.
+    # Calculations always read the numeric inputs above, never the library.
+    component_selections: dict = field(default_factory=dict)
     # ^ dotted input paths the user has flagged as "assumed" (e.g. "caliper.piston_travel").
     #   Purely advisory: outputs that depend on an assumed input show a small warning. Saved with
     #   the preset so the assumption travels with the design.

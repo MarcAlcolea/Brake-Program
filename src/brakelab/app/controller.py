@@ -14,6 +14,9 @@ from pathlib import Path
 from PySide6.QtCore import QObject, Signal
 
 from ..core.attrpath import get_by_path, set_by_path
+from ..components.library import (
+    SLOTS, ComponentLibrary, Component, applied_values, component_from_dict, matches, selected_component,
+)
 from ..core.engine import BrakeEngine
 from ..core.models import VehicleConfig
 from ..core.results import BrakeResults
@@ -41,12 +44,23 @@ class ProjectController(QObject):
 
     resultsChanged = Signal(object)  # BrakeResults
     configReplaced = Signal(object)  # VehicleConfig — a whole new config was loaded
+    componentsChanged = Signal()
 
-    def __init__(self, config: VehicleConfig) -> None:
+    def __init__(self, config: VehicleConfig, component_library: ComponentLibrary | None = None) -> None:
         super().__init__()
         self._engine = BrakeEngine()
         self._config = config
+        self.component_library = component_library if component_library is not None else ComponentLibrary()
+        self._capture_legacy_components()
         self._results: BrakeResults = self._engine.solve(config)
+
+    def _capture_legacy_components(self) -> None:
+        """Capture inferred legacy selections before the setup can be exported again."""
+        config = self._config
+        for slot in SLOTS:
+            if slot not in config.component_selections:
+                part = self.selected_component(slot)
+                config.component_selections[slot] = part.to_dict() if part else None
 
     # --- accessors ---------------------------------------------------------------------------
     @property
@@ -61,6 +75,20 @@ class ProjectController(QObject):
         return get_by_path(self._config, path)
 
     # --- mutation ----------------------------------------------------------------------------
+    def selected_component(self, slot: str) -> Component | None:
+        return selected_component(self._config, slot)
+
+    def select_component(self, slot: str, component: Component | None) -> None:
+        if slot not in SLOTS:
+            raise ValueError("Unknown component position.")
+        if component is not None:
+            component = component_from_dict(component.to_dict())
+            values = applied_values(component, slot)
+            for path, value in values.items():
+                set_by_path(self._config, path, value)
+        self._config.component_selections[slot] = component.to_dict() if component else None
+        self.recompute()
+
     def set_value(self, path: str, value) -> None:
         """Update one config field by dotted path and recompute."""
         set_by_path(self._config, path, value)
@@ -122,10 +150,14 @@ class ProjectController(QObject):
 
     def replace_config(self, config: VehicleConfig) -> None:
         self._config = config
+        self._capture_legacy_components()
         self.configReplaced.emit(config)
         self.recompute()
 
     def recompute(self) -> None:
+        for slot, snapshot in self._config.component_selections.items():
+            if snapshot is not None and not matches(component_from_dict(snapshot), self._config, slot):
+                self._config.component_selections[slot] = None
         self._results = self._engine.solve(self._config)
         self.resultsChanged.emit(self._results)
 

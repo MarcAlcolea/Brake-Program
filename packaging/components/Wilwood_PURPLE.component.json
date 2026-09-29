@@ -1,0 +1,11 @@
+{
+  "format": "brakelab.component",
+  "schema_version": 1,
+  "id": "072f76e3-2738-5d4c-888f-9da766b38477",
+  "kind": "pad",
+  "name": "Wilwood PolyMatrix PURPLE",
+  "values": {
+    "friction_coefficient": 0.35
+  },
+  "note": "added by Marc Alcolea, pessimistic estimate"
+}

@@ -89,6 +89,8 @@ jobs:
     permissions:
       contents: write
     steps:
+      - uses: actions/checkout@v4
+
       - uses: actions/download-artifact@v4
         with:
           merge-multiple: true
@@ -98,6 +100,7 @@ jobs:
           files: |
             Brake-Design-Studio-Windows.zip
             Brake-Design-Studio-macOS-AppleSilicon.zip
+            packaging/components/Wilwood_PURPLE.component.json
           fail_on_unmatched_files: true
           body: |
             Standalone Brake Design Studio apps — no Python or terminal needed.
@@ -110,3 +113,7 @@ jobs:
             double-click to extract, then right-click `Brake Design Studio.app` → **Open**. If macOS
             still blocks it, allow it under **System Settings → Privacy & Security → Open Anyway**
             (first launch only). Intel Macs: run from source, see the README.
+
+            **Components:** Wilwood PolyMatrix PURPLE is included in both apps by default
+            (coefficient 0.35, a pessimistic estimate). Its component JSON is also attached separately.
+            Use **Components → Manage components…** to create, edit, import and export custom parts.

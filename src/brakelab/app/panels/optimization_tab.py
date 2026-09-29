@@ -32,7 +32,6 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from ...components import catalog
 from ...core.attrpath import get_by_path
 from ...core.engine import BrakeEngine
 from ...optimization import (
@@ -157,6 +156,7 @@ class OptimizationTab(QWidget):
         self._add("5. Results", self._results(), expanded=True)
         self._layout.addStretch(1)
         self.refresh_current()
+        controller.componentsChanged.connect(self.refresh_current)
 
     @property
     def latest_result(self):
@@ -184,7 +184,7 @@ class OptimizationTab(QWidget):
             source = None
             if kind == "mc":
                 source = QComboBox()
-                source.addItems([_RANGE] + catalog.master_cylinder_series() + [_ALL_MC])
+                source.addItems([_RANGE] + self._controller.component_library.master_cylinder_series() + [_ALL_MC])
                 source.setCurrentIndex(1)
                 source.setMaxVisibleItems(8)
                 style_combo(source)
@@ -385,6 +385,14 @@ class OptimizationTab(QWidget):
     def refresh_current(self) -> None:
         cfg = self._controller.config
         for r in self._var_rows:
+            source = r["source"]
+            if source is not None:
+                current = source.currentText()
+                source.blockSignals(True)
+                source.clear()
+                source.addItems([_RANGE] + self._controller.component_library.master_cylinder_series() + [_ALL_MC])
+                source.setCurrentText(current if source.findText(current) >= 0 else _RANGE)
+                source.blockSignals(False)
             r["cur"].setText(f"{float(get_by_path(cfg, r['path'])):g}")
 
     def _collect(self) -> OptimizationProblem | None:
@@ -399,7 +407,7 @@ class OptimizationTab(QWidget):
                 return None
             if source != _RANGE:
                 # Discrete catalog bores, limited to the Min/Max window the user set.
-                all_bores = catalog.all_mc_bores() if source == _ALL_MC else catalog.bores_for_series(source)
+                all_bores = self._controller.component_library.bores() if source == _ALL_MC else self._controller.component_library.bores(source)
                 choices = [b for b in all_bores if lo <= b <= hi]
                 if not choices:
                     QMessageBox.warning(self, "Optimization",

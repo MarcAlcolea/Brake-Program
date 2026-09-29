@@ -78,6 +78,37 @@ So a new preset ships with the app and appears for everyone who downloads the Re
 
 ---
 
+## Saving & sharing components
+
+The downloaded Windows and macOS apps include **Wilwood PolyMatrix PURPLE** by default, with a
+coefficient of **0.35** and the note that this is a pessimistic estimate. The Release also includes
+`Wilwood_PURPLE.component.json` as a separate download; it is not needed to use the built-in pad.
+
+- **Components → Manage components… → New…**: choose Brake pad, Caliper or Master cylinder, enter a
+  name and its values (units are shown), add optional notes, and save. It appears in both Main and
+  Simulator dropdowns immediately, and remains available after restarting or updating the app.
+- **Edit / Duplicate / Delete** manage your custom parts. Built-in parts can be duplicated and
+  exported; edit the copy to keep the defaults available.
+- The **⋯** next to a component dropdown offers **Save current values as component…**, which starts
+  with the numbers already entered in the active car.
+- **Export…** saves one `.component.json` file to any folder. Send it to a teammate; they add it with
+  **Manage components… → Import…**. On a conflict, choose Replace or Save as copy; imports never
+  silently overwrite an existing part.
+
+Custom component files live in the user application-data folder under `Brake Design Studio/components`,
+beside the saved configurations. Each car setup also stores a snapshot of its selected components:
+it can be shared without separately importing those parts, and editing/deleting a library part does
+not change an existing setup. A dropdown shows `(saved values)` when the setup's snapshot differs
+from the current library. Selecting the library entry again applies its latest values. Manually
+changing a component's numeric inputs changes its selection to Custom.
+
+Master-cylinder bores from the custom library are also available in the optimizer. The existing car
+model has one shared master-cylinder stroke limit: selecting the front cylinder sets that limit;
+selecting the rear cylinder applies only its bore. Old car setups still load in the updated app;
+setups exported with component identities require the updated version.
+
+---
+
 ## Repository layout (for developers)
 
 If you cloned the source, here is what every folder is:

@@ -26,7 +26,7 @@ from ..core.models import (
     VehicleConfig,
 )
 
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
 
 
 def config_to_dict(config: VehicleConfig) -> dict[str, Any]:
@@ -46,6 +46,16 @@ def _kw(cls, values: dict[str, Any]) -> dict[str, Any]:
 def config_from_dict(data: dict[str, Any]) -> VehicleConfig:
     """Reconstruct a config from a dict, applying migrations for older schema versions."""
     data = _migrate(dict(data))
+    from ..components.library import SLOTS, component_from_dict
+
+    selections = data.get("component_selections", {})
+    if not isinstance(selections, dict):
+        raise ValueError("Invalid saved component selections.")
+    for slot, snapshot in selections.items():
+        if slot not in SLOTS:
+            raise ValueError(f"Unknown component position: {slot}.")
+        if snapshot is not None and component_from_dict(snapshot).kind != SLOTS[slot]:
+            raise ValueError(f"Wrong component type for {slot}.")
     return VehicleConfig(
         name=data["name"],
         mass=MassProperties(**_kw(MassProperties, data["mass"])),
@@ -62,6 +72,7 @@ def config_from_dict(data: dict[str, Any]) -> VehicleConfig:
         thermal=Thermal(**_kw(Thermal, data.get("thermal", {}))),
         performance=Performance(**_kw(Performance, data.get("performance", {}))),
         assumed_inputs=list(data.get("assumed_inputs", [])),
+        component_selections=selections,
     )
 
 
@@ -80,6 +91,8 @@ def load_config(path: str | Path) -> VehicleConfig:
 def _migrate(data: dict[str, Any]) -> dict[str, Any]:
     """Upgrade an older config dict in place to the current schema. No-op for current version."""
     version = data.get("schema_version", 1)
+    if version < 2:
+        data.setdefault("component_selections", {})
     # Future migrations go here, e.g.:
     #   if version < 2: ...transform...; version = 2
     if version > SCHEMA_VERSION:
