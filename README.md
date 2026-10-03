@@ -184,6 +184,10 @@ python -m pytest                                                     # run the t
 
 ## Releasing a new version
 
+Updating source or pulling Git changes does not update an existing Windows executable.
+See [Keeping the Windows application current](docs/windows_updates.md) for the build,
+restart checks, and backup installation procedure.
+
 Tag and push — GitHub Actions builds both apps, runs the tests, smoke-tests the frozen apps, and
 publishes the Release automatically:
 ```

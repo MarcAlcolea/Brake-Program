@@ -346,6 +346,15 @@ def run(config: VehicleConfig | None = None) -> int:
     # CI smoke test: BRAKELAB_SMOKE=1 quits shortly after the window is up, so the packaged
     # app can be verified headless (exit 0 = launched, solved, and rendered without crashing).
     if os.environ.get("BRAKELAB_SMOKE"):
+        # Validate the frozen catalog and actual dropdowns, not just window startup.
+        # This catches an old bundle being installed despite updated source files.
+        panels = window.findChildren(ComponentsPanel)
+        if not panels or any(
+            not any("PURPLE" in panel._combos["pad"].itemText(i)
+                    for i in range(panel._combos["pad"].count()))
+            for panel in panels
+        ):
+            raise RuntimeError("Packaged app is missing the built-in PURPLE brake pad.")
         QTimer.singleShot(2000, app.quit)
 
     return app.exec()
