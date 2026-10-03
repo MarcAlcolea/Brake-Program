@@ -13,7 +13,8 @@ from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg
 from matplotlib.figure import Figure
 from PySide6.QtWidgets import QLabel, QVBoxLayout, QWidget
 
-matplotlib.rcParams["font.family"] = ["Helvetica", "Helvetica Neue", "Arial", "DejaVu Sans"]
+from ..chart_style import apply_chart_fonts
+apply_chart_fonts()
 
 from ...core.balance import BalanceDiagram, brake_balance
 from .. import theme

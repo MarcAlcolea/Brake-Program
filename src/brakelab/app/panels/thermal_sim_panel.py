@@ -21,7 +21,8 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-matplotlib.rcParams["font.family"] = ["Helvetica", "Helvetica Neue", "Arial", "DejaVu Sans"]
+from ..chart_style import apply_chart_fonts
+apply_chart_fonts()
 
 from ...thermal import ThermalSimResult, simulate_temperature, write_ansys_csv
 from .. import theme

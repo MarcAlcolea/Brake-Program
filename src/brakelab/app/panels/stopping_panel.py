@@ -18,7 +18,8 @@ from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg
 from matplotlib.figure import Figure
 from PySide6.QtWidgets import QLabel, QTableWidgetItem, QVBoxLayout, QWidget
 
-matplotlib.rcParams["font.family"] = ["Helvetica", "Helvetica Neue", "Arial", "DejaVu Sans"]
+from ..chart_style import apply_chart_fonts
+apply_chart_fonts()
 
 from ...core.performance import braking_speeds, speed_profile, stopping_distance_time
 from .. import theme

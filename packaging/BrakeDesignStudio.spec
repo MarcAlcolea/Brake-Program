@@ -122,6 +122,19 @@ def _keep(entry):
 a.binaries = [e for e in a.binaries if _keep(e)]
 a.datas = [e for e in a.datas if _keep(e)]
 
+# Python may bundle an older Visual C++ runtime than Qt. Windows loads the
+# root copy first; mixing it with recent Qt DLLs causes QtCore import failures.
+# Ship the Qt runtime at the root too so Python and Qt use the same version.
+if sys.platform == "win32":
+    import PySide6
+    qt_dir = Path(PySide6.__file__).resolve().parent
+    for runtime in ("VCRUNTIME140.dll", "VCRUNTIME140_1.dll"):
+        qt_runtime = qt_dir / runtime
+        if qt_runtime.exists():
+            a.binaries = [entry for entry in a.binaries
+                          if entry[0].replace("\\", "/").lower() != runtime.lower()]
+            a.binaries.append((runtime, str(qt_runtime), "BINARY"))
+
 pyz = PYZ(a.pure)
 
 icon = str(ROOT / "packaging" / ("icon.icns" if sys.platform == "darwin" else "icon.ico"))

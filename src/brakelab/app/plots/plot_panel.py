@@ -16,7 +16,8 @@ from matplotlib.figure import Figure
 from PySide6.QtWidgets import QComboBox, QHBoxLayout, QLabel, QVBoxLayout, QWidget
 
 # Match the app's Helvetica typography in the charts too (falls back gracefully if unavailable).
-matplotlib.rcParams["font.family"] = ["Helvetica", "Helvetica Neue", "Arial", "DejaVu Sans"]
+from ..chart_style import apply_chart_fonts
+apply_chart_fonts()
 
 from ...core.attrpath import get_by_path, set_by_path
 from ...core.engine import BrakeEngine

@@ -6,7 +6,7 @@ $ErrorActionPreference = "Stop"
 $repo = Split-Path $PSScriptRoot -Parent
 Push-Location $repo
 try {
-    & $Python -m PyInstaller --noconfirm packaging/BrakeDesignStudio.spec
+    & $Python -m PyInstaller --clean --noconfirm packaging/BrakeDesignStudio.spec
     if ($LASTEXITCODE -ne 0) { throw "Build failed; installed application was not changed." }
     $built = Join-Path $repo 'dist/Brake Design Studio'
     $revision = & git rev-parse HEAD
