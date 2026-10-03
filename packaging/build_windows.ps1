@@ -6,8 +6,18 @@ $ErrorActionPreference = "Stop"
 $repo = Split-Path $PSScriptRoot -Parent
 Push-Location $repo
 try {
-    & $Python -m PyInstaller --clean --noconfirm packaging/BrakeDesignStudio.spec
-    if ($LASTEXITCODE -ne 0) { throw "Build failed; installed application was not changed." }
+    # External tools on PATH can contribute incompatible DLLs (for example
+    # Poppler's ICU library) to PyInstaller's Windows dependency scan.
+    $previousPath = $env:PATH
+    try {
+        $pythonLocation = & $Python -c "import sys; print(sys.executable)"
+        if ($LASTEXITCODE -ne 0) { throw "Cannot locate build Python." }
+        $pythonLocation = $pythonLocation.Trim()
+        $env:PATH = (Split-Path $pythonLocation) + ';' + $env:SystemRoot + '\System32;' + $env:SystemRoot
+        & $pythonLocation -m PyInstaller --clean --noconfirm packaging/BrakeDesignStudio.spec
+        $buildExitCode = $LASTEXITCODE
+    } finally { $env:PATH = $previousPath }
+    if ($buildExitCode -ne 0) { throw "Build failed; installed application was not changed." }
     $built = Join-Path $repo 'dist/Brake Design Studio'
     $revision = & git rev-parse HEAD
     if ($LASTEXITCODE -ne 0) { throw "Cannot identify source revision." }
